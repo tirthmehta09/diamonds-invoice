@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { getAllParties, saveParty, deleteParty, generateId } from '../utils/storage';
 import { useToast } from '../components/Toast.jsx';
-import { useNavigate } from 'react-router-dom';
 
 function PartyForm({ party, onSave, onCancel }) {
   const [name, setName] = useState(party?.name || '');
@@ -25,64 +24,65 @@ function PartyForm({ party, onSave, onCancel }) {
   };
 
   return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div>
-          <label className="field-label">Party Name *</label>
-          <input
-            className="field-input"
-            value={name}
-            onChange={(e) => setName(e.target.value.toUpperCase())}
-            placeholder="M/S COMPANY NAME"
-            autoCapitalize="characters"
-          />
-        </div>
-        <div>
-          <label className="field-label">Address (one line per line)</label>
-          <textarea
-            className="field-input"
-            rows={4}
-            value={address}
-            onChange={(e) => setAddress(e.target.value.toUpperCase())}
-            placeholder={'LINE 1\nLINE 2\nCITY-PINCODE'}
-            style={{ resize: 'none', lineHeight: 1.6 }}
-            autoCapitalize="characters"
-          />
-        </div>
-        <div>
-          <label className="field-label">
-            GSTIN{' '}
-            {gstin && (
-              <span style={{ color: gstinValid ? '#34d399' : '#f87171' }}>
-                {gstinValid ? '✓' : '✗ Invalid format'}
-              </span>
-            )}
-          </label>
-          <input
-            className="field-input"
-            value={gstin}
-            onChange={(e) => setGstin(e.target.value.toUpperCase())}
-            placeholder="27XXXXX0000X1ZX"
-            maxLength={15}
-            autoCapitalize="characters"
-            style={{ fontFamily: 'monospace', letterSpacing: '0.05em' }}
-          />
-        </div>
-        <div>
-          <label className="field-label">Default Terms</label>
-          <input
-            className="field-input"
-            value={defaultTerms}
-            onChange={(e) => setDefaultTerms(e.target.value)}
-            placeholder="COD"
-          />
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn-primary" style={{ flex: 1 }} onClick={handleSave} disabled={!name.trim()}>
-            Save Party
-          </button>
-          <button className="btn-secondary" onClick={onCancel}>Cancel</button>
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div>
+        <label className="field-label">Party Name *</label>
+        <input
+          className="field-input"
+          value={name}
+          onChange={(e) => setName(e.target.value.toUpperCase())}
+          placeholder="M/S COMPANY NAME"
+          autoCapitalize="characters"
+          autoFocus
+        />
+      </div>
+      <div>
+        <label className="field-label">Address (one line per line)</label>
+        <textarea
+          className="field-input"
+          rows={3}
+          value={address}
+          onChange={(e) => setAddress(e.target.value.toUpperCase())}
+          placeholder={'LINE 1\nLINE 2\nCITY - PINCODE'}
+          style={{ resize: 'none', lineHeight: 1.6 }}
+          autoCapitalize="characters"
+        />
+      </div>
+      <div>
+        <label className="field-label">
+          GSTIN{' '}
+          {gstin && (
+            <span style={{ color: gstinValid ? '#10b981' : '#f87171', fontSize: 11 }}>
+              {gstinValid ? '✓ Valid' : '✗ Invalid format'}
+            </span>
+          )}
+        </label>
+        <input
+          className="field-input"
+          value={gstin}
+          onChange={(e) => setGstin(e.target.value.toUpperCase())}
+          placeholder="27XXXXX0000X1ZX"
+          maxLength={15}
+          autoCapitalize="characters"
+          style={{ fontFamily: 'monospace', letterSpacing: '0.06em' }}
+        />
+      </div>
+      <div>
+        <label className="field-label">Default Terms</label>
+        <input
+          className="field-input"
+          value={defaultTerms}
+          onChange={(e) => setDefaultTerms(e.target.value)}
+          placeholder="COD"
+        />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, marginTop: 4 }}>
+        <button className="btn-primary" onClick={handleSave} disabled={!name.trim()}>
+          💾 Save Party
+        </button>
+        <button className="btn-secondary" onClick={onCancel}>
+          Cancel
+        </button>
       </div>
     </div>
   );
@@ -92,7 +92,7 @@ export default function Parties() {
   const [parties, setParties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
-  const [editing, setEditing] = useState(null); // null | 'new' | partyId
+  const [editing, setEditing] = useState(null);
   const showToast = useToast();
 
   const load = () => {
@@ -126,7 +126,7 @@ export default function Parties() {
         <h1>👥 Saved Parties</h1>
         <button
           className="btn-primary"
-          style={{ padding: '8px 16px', minHeight: 36, fontSize: 13, width: 'auto' }}
+          style={{ padding: '8px 14px', minHeight: 36, fontSize: 13, width: 'auto', flexShrink: 0 }}
           onClick={() => setEditing('new')}
         >
           + Add
@@ -134,14 +134,12 @@ export default function Parties() {
       </div>
 
       <div className="page-content">
-        {/* Add form */}
+
+        {/* Add/Edit form */}
         {editing === 'new' && (
-          <div className="section-card" style={{ borderColor: 'rgba(59,130,246,0.3)' }}>
+          <div className="section-card" style={{ borderColor: '#bfdbfe', borderWidth: 1.5 }}>
             <div className="section-title">✏️ New Party</div>
-            <PartyForm
-              onSave={handleSave}
-              onCancel={() => setEditing(null)}
-            />
+            <PartyForm onSave={handleSave} onCancel={() => setEditing(null)} />
           </div>
         )}
 
@@ -158,7 +156,11 @@ export default function Parties() {
           />
         </div>
 
-        {loading && <div style={{ textAlign: 'center', padding: 40 }}><span className="spinner" /></div>}
+        {loading && (
+          <div style={{ textAlign: 'center', padding: 48 }}>
+            <span className="spinner dark" />
+          </div>
+        )}
 
         {!loading && filtered.length === 0 && !editing && (
           <div className="empty-state">
@@ -166,45 +168,41 @@ export default function Parties() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <h3>No parties saved</h3>
-            <p>Tap "+ Add" to save a buyer for quick autofill.</p>
+            <p>Tap "＋ Add" to save a buyer for quick autofill on invoices.</p>
           </div>
         )}
 
         {filtered.map((party) => (
           <div key={party.id}>
             {editing === party.id ? (
-              <div className="section-card" style={{ borderColor: 'rgba(59,130,246,0.3)' }}>
+              <div className="section-card" style={{ borderColor: '#bfdbfe', borderWidth: 1.5 }}>
                 <div className="section-title">✏️ Edit Party</div>
-                <PartyForm
-                  party={party}
-                  onSave={handleSave}
-                  onCancel={() => setEditing(null)}
-                />
+                <PartyForm party={party} onSave={handleSave} onCancel={() => setEditing(null)} />
               </div>
             ) : (
               <div className="party-card">
                 <div className="party-card-header">
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="party-name">{party.name}</div>
                     {party.gstin && <div className="party-gstin">GSTIN: {party.gstin}</div>}
                     {party.addressLines?.length > 0 && (
-                      <div style={{ fontSize: 11, color: '#475569', marginTop: 4 }}>
+                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, lineHeight: 1.4 }}>
                         {party.addressLines.join(', ')}
                       </div>
                     )}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 10 }}>
                   <button
                     className="btn-secondary"
-                    style={{ flex: 1, fontSize: 12, padding: '8px', minHeight: 36 }}
+                    style={{ fontSize: 13, padding: '9px 12px', minHeight: 38 }}
                     onClick={() => setEditing(party.id)}
                   >
                     ✏️ Edit
                   </button>
                   <button
                     className="btn-secondary btn-danger"
-                    style={{ padding: '8px 12px', minHeight: 36, fontSize: 12 }}
+                    style={{ padding: '9px 14px', minHeight: 38, fontSize: 13 }}
                     onClick={() => handleDelete(party.id)}
                   >
                     🗑️ Delete

@@ -1,10 +1,10 @@
 // src/pages/CreateInvoice.jsx
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { COMPANIES, DELIVERY_CITIES, DISPATCH_MODES, TC_CLAUSES } from '../config/companies';
+import { COMPANIES, DELIVERY_CITIES, DISPATCH_MODES } from '../config/companies';
 import { calcItemAmount, calcTotals, formatIndianNumber, formatCts, parseNumber } from '../utils/calculations';
 import { amountInWords } from '../utils/amountInWords';
-import { todayISO, formatDate } from '../utils/dateHelpers';
+import { todayISO } from '../utils/dateHelpers';
 import { getNextInvoiceNumber, confirmInvoiceNumber } from '../utils/invoiceNumber';
 import { saveInvoice, generateId, getAllParties, saveParty } from '../utils/storage';
 import { downloadInvoicePDF, shareInvoicePDF } from '../utils/pdfGenerator';
@@ -40,10 +40,10 @@ export default function CreateInvoice() {
   const [items, setItems] = useState([emptyItem(company?.defaultDescription || '')]);
   const [generating, setGenerating] = useState(false);
   const [showPartySearch, setShowPartySearch] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [loadedParty, setLoadedParty] = useState(null);
   const [savedInvoiceId] = useState(invoiceId || generateId());
+  const [errors, setErrors] = useState({});
 
-  // Auto-suggest invoice number on mount
   useEffect(() => {
     if (company && !invoiceId) {
       setInvoiceNo(getNextInvoiceNumber(company.id));
@@ -54,28 +54,19 @@ export default function CreateInvoice() {
     return <div style={{ padding: 24, color: '#ef4444' }}>Invalid company.</div>;
   }
 
-  // ── item helpers ────────────────────────────────────────────────────────
+  // ── item helpers ─────────────────────────────────────────────────────────
   const updateItem = useCallback((id, field, value) => {
-    setItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item;
-        const updated = { ...item, [field]: value };
-        // Auto-copy description to all other rows
-        if (field === 'description') {
-          return updated;
-        }
-        return updated;
-      })
-    );
-
-    // If description changed in first row, propagate to all
     if (field === 'description') {
       setItems((prev) => {
         if (prev[0]?.id === id) {
           return prev.map((item) => ({ ...item, description: value }));
         }
-        return prev.map((item) => (item.id === id ? { ...item, [field]: value } : item));
+        return prev.map((item) => (item.id === id ? { ...item, description: value } : item));
       });
+    } else {
+      setItems((prev) =>
+        prev.map((item) => (item.id !== id ? item : { ...item, [field]: value }))
+      );
     }
   }, []);
 
@@ -84,16 +75,13 @@ export default function CreateInvoice() {
   }, [company]);
 
   const removeItem = useCallback((id) => {
-    setItems((prev) => {
-      if (prev.length === 1) return prev; // keep at least one row
-      return prev.filter((i) => i.id !== id);
-    });
+    setItems((prev) => (prev.length === 1 ? prev : prev.filter((i) => i.id !== id)));
   }, []);
 
-  // ── totals ──────────────────────────────────────────────────────────────
+  // ── totals ────────────────────────────────────────────────────────────────
   const totals = calcTotals(items, company.igstRate);
 
-  // ── build invoice object ─────────────────────────────────────────────────
+  // ── build invoice ─────────────────────────────────────────────────────────
   const buildInvoice = () => ({
     id: savedInvoiceId,
     company: company.id,
@@ -122,29 +110,98 @@ export default function CreateInvoice() {
     updatedAt: new Date().toISOString(),
   });
 
-  // ── validate ─────────────────────────────────────────────────────────────
+  // ── validate (all fields required) ───────────────────────────────────────
   const validate = () => {
-    if (!buyerName.trim()) { showToast('Please enter buyer name', 'error'); return false; }
-    const hasItems = items.some((i) => parseNumber(i.cts) > 0 && parseNumber(i.rate) > 0);
-    if (!hasItems) { showToast('Please fill at least one item (CTS + Rate)', 'error'); return false; }
+    const newErrors = {};
+
+    if (!invoiceNo.trim())        newErrors.invoiceNo = true;
+    if (!invoiceDate)             newErrors.invoiceDate = true;
+    if (!dispatchDate)            newErrors.dispatchDate = true;
+    if (!dispatchMode.trim())     newErrors.dispatchMode = true;
+    if (!terms.trim())            newErrors.terms = true;
+    if (!hsnCode.trim())          newErrors.hsnCode = true;
+    if (!deliveryCity.trim())     newErrors.deliveryCity = true;
+    if (!buyerName.trim())        newErrors.buyerName = true;
+    if (!buyerAddress.trim())     newErrors.buyerAddress = true;
+    if (!buyerGstin.trim())       newErrors.buyerGstin = true;
+
+    const gstinPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    if (buyerGstin.trim() && !gstinPattern.test(buyerGstin.trim())) {
+      newErrors.buyerGstinFormat = true;
+    }
+
+    const itemErrors = {};
+    items.forEach((item) => {
+      const errs = {};
+      if (!item.description.trim())       errs.description = true;
+      if (!(parseNumber(item.cts) > 0))   errs.cts = true;
+      if (!(parseNumber(item.rate) > 0))  errs.rate = true;
+      if (Object.keys(errs).length) itemErrors[item.id] = errs;
+    });
+    if (Object.keys(itemErrors).length) newErrors.items = itemErrors;
+
+    setErrors(newErrors);
+
+    if (newErrors.invoiceNo)        { showToast('Invoice Number is required', 'error'); return false; }
+    if (newErrors.invoiceDate)      { showToast('Invoice Date is required', 'error'); return false; }
+    if (newErrors.dispatchDate)     { showToast('Dispatch Date is required', 'error'); return false; }
+    if (newErrors.terms)            { showToast('Terms is required', 'error'); return false; }
+    if (newErrors.hsnCode)          { showToast('HSN Code is required', 'error'); return false; }
+    if (newErrors.buyerName)        { showToast('Buyer Name is required', 'error'); return false; }
+    if (newErrors.buyerAddress)     { showToast('Buyer Address is required', 'error'); return false; }
+    if (newErrors.buyerGstin)       { showToast('Buyer GSTIN is required', 'error'); return false; }
+    if (newErrors.buyerGstinFormat) { showToast('Buyer GSTIN format is invalid', 'error'); return false; }
+    if (newErrors.items)            { showToast('Each item needs Description, CTS & Rate', 'error'); return false; }
     return true;
   };
 
-  // ── party auto-save ──────────────────────────────────────────────────────
+  // ── party auto-save ───────────────────────────────────────────────────────
   const checkAndPromptPartySave = async () => {
     if (!buyerName.trim()) return;
     try {
       const parties = await getAllParties();
-      const exists = parties.some(p => p.name.toUpperCase() === buyerName.trim().toUpperCase());
-      if (!exists) {
-        if (window.confirm(`Save "${buyerName}" as a new party for future invoices?`)) {
+      const currentName = buyerName.trim();
+      const currentAddressLines = buyerAddress.split('\n').map(l => l.trim()).filter(Boolean);
+      const currentGstin = buyerGstin.trim();
+
+      const existingByName = parties.find(p => p.name.toUpperCase() === currentName.toUpperCase());
+      const existingById = loadedParty ? parties.find(p => p.id === loadedParty.id) : null;
+      
+      const existingParty = existingById || existingByName;
+
+      if (existingParty) {
+        const addressChanged = JSON.stringify(existingParty.addressLines || []) !== JSON.stringify(currentAddressLines);
+        const gstinChanged = (existingParty.gstin || '') !== currentGstin;
+        const nameChanged = existingParty.name !== currentName;
+
+        if (addressChanged || gstinChanged || nameChanged) {
+          if (window.confirm(`Buyer details for "${existingParty.name}" have changed.\n\nClick OK to UPDATE the saved party, or click Cancel to SKIP.`)) {
+            await saveParty({
+              ...existingParty,
+              name: currentName,
+              addressLines: currentAddressLines,
+              gstin: currentGstin,
+            });
+            showToast('Party updated!', 'success');
+          } else if (window.confirm(`Would you like to SAVE AS A NEW party instead?`)) {
+            await saveParty({
+              id: generateId(),
+              name: currentName,
+              addressLines: currentAddressLines,
+              gstin: currentGstin,
+            });
+            showToast('New party saved!', 'success');
+          }
+        }
+      } else {
+        if (window.confirm(`Save "${currentName}" as a new party?`)) {
           await saveParty({
             id: generateId(),
-            name: buyerName.trim(),
-            addressLines: buyerAddress.split('\n').map(l => l.trim()).filter(Boolean),
-            gstin: buyerGstin.trim()
+            name: currentName,
+            addressLines: currentAddressLines,
+            gstin: currentGstin,
           });
-          showToast('Party saved successfully!', 'success');
+          showToast('Party saved!', 'success');
         }
       }
     } catch (err) {
@@ -152,25 +209,7 @@ export default function CreateInvoice() {
     }
   };
 
-  // ── save & generate PDF ──────────────────────────────────────────────────
-  const handleGeneratePDF = async () => {
-    if (!validate()) return;
-    setGenerating(true);
-    try {
-      const invoice = buildInvoice();
-      await saveInvoice(invoice);
-      confirmInvoiceNumber(company.id);
-      downloadInvoicePDF(invoice, company);
-      showToast('PDF downloaded!', 'success');
-      await checkAndPromptPartySave();
-    } catch (err) {
-      console.error(err);
-      showToast('Error generating PDF', 'error');
-    } finally {
-      setGenerating(false);
-    }
-  };
-
+  // ── actions ───────────────────────────────────────────────────────────────
   const handleShare = async () => {
     if (!validate()) return;
     setGenerating(true);
@@ -189,82 +228,107 @@ export default function CreateInvoice() {
     }
   };
 
-  // ── party autofill ───────────────────────────────────────────────────────
+  const handleGeneratePDF = async () => {
+    if (!validate()) return;
+    setGenerating(true);
+    try {
+      const invoice = buildInvoice();
+      await saveInvoice(invoice);
+      confirmInvoiceNumber(company.id);
+      downloadInvoicePDF(invoice, company);
+      showToast('PDF downloaded!', 'success');
+      await checkAndPromptPartySave();
+    } catch (err) {
+      console.error(err);
+      showToast('Error generating PDF', 'error');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const handlePartySelect = (party) => {
     setBuyerName(party.name);
     setBuyerAddress((party.addressLines || []).join('\n'));
     setBuyerGstin(party.gstin || '');
+    setLoadedParty(party);
     setShowPartySearch(false);
     showToast(`Loaded: ${party.name}`, 'success');
   };
 
-  // ── GSTIN validation indicator ───────────────────────────────────────────
   const gstinValid = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(buyerGstin);
-
   const isJas = company.id === 'jas_diamond';
+  const accentBg = isJas ? 'rgba(37,99,235,0.12)' : 'rgba(147,51,234,0.12)';
+  const accentColor = isJas ? '#3b82f6' : '#a855f7';
+
+  // error border helper
+  const eb = (key) => errors[key]
+    ? { borderColor: '#ef4444', boxShadow: '0 0 0 3px rgba(239,68,68,0.12)' }
+    : {};
+
+  const REQ = <span style={{ color: '#ef4444', marginLeft: 1 }}>*</span>;
 
   return (
     <>
-      {/* Top bar */}
+      {/* ── Top Bar ────────────────────────────────────────────────────────── */}
       <div className="top-bar">
         <button
           className="btn-secondary"
-          style={{ padding: '8px 12px', minHeight: 36, fontSize: 13 }}
+          style={{ padding: '8px 12px', minHeight: 36, fontSize: 13, flexShrink: 0 }}
           onClick={() => navigate('/')}
         >
           ← Back
         </button>
-        <h1 style={{ fontSize: 16 }}>{company.displayName}</h1>
-        <div
-          className="badge"
-          style={{
-            background: isJas ? 'rgba(59,130,246,0.2)' : 'rgba(168,85,247,0.2)',
-            color: isJas ? '#60a5fa' : '#c084fc',
-          }}
-        >
+        <h1 style={{ fontSize: 15 }}>{company.displayName}</h1>
+        <div className="badge" style={{ background: accentBg, color: accentColor, border: 'none' }}>
           {company.shortName}
         </div>
       </div>
 
-      <div className="page-content" style={{ paddingBottom: 200 }}>
+      <div className="page-content" style={{ paddingBottom: 150 }}>
 
-        {/* ─── SECTION 1: Invoice Details ──────────────────────────────── */}
+        {/* ── SECTION 1: Invoice Details ─────────────────────────────────── */}
         <div className="section-card">
           <div className="section-title">📋 Invoice Details</div>
+
+          <div style={{ marginBottom: 10 }}>
+            <label className="field-label">Invoice Number {REQ}</label>
+            <input
+              className="field-input"
+              value={invoiceNo}
+              onChange={(ev) => { setInvoiceNo(ev.target.value); setErrors(p => ({ ...p, invoiceNo: false })); }}
+              placeholder="03/2026-27"
+              style={eb('invoiceNo')}
+            />
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div style={{ gridColumn: '1/-1' }}>
-              <label className="field-label">Invoice Number</label>
-              <input
-                className="field-input"
-                value={invoiceNo}
-                onChange={(e) => setInvoiceNo(e.target.value)}
-                placeholder="03/2026-27"
-              />
-            </div>
             <div>
-              <label className="field-label">Invoice Date</label>
+              <label className="field-label">Invoice Date {REQ}</label>
               <input
                 className="field-input"
                 type="date"
                 value={invoiceDate}
-                onChange={(e) => setInvoiceDate(e.target.value)}
+                onChange={(ev) => { setInvoiceDate(ev.target.value); setErrors(p => ({ ...p, invoiceDate: false })); }}
+                style={eb('invoiceDate')}
               />
             </div>
             <div>
-              <label className="field-label">Dispatch Date</label>
+              <label className="field-label">Dispatch Date {REQ}</label>
               <input
                 className="field-input"
                 type="date"
                 value={dispatchDate}
-                onChange={(e) => setDispatchDate(e.target.value)}
+                onChange={(ev) => { setDispatchDate(ev.target.value); setErrors(p => ({ ...p, dispatchDate: false })); }}
+                style={eb('dispatchDate')}
               />
             </div>
             <div>
-              <label className="field-label">Dispatch Mode</label>
+              <label className="field-label">Dispatch Mode {REQ}</label>
               <select
                 className="field-input"
                 value={dispatchMode}
-                onChange={(e) => setDispatchMode(e.target.value)}
+                onChange={(ev) => { setDispatchMode(ev.target.value); setErrors(p => ({ ...p, dispatchMode: false })); }}
+                style={eb('dispatchMode')}
               >
                 {DISPATCH_MODES.map((m) => (
                   <option key={m} value={m}>{m}</option>
@@ -272,29 +336,32 @@ export default function CreateInvoice() {
               </select>
             </div>
             <div>
-              <label className="field-label">Terms</label>
+              <label className="field-label">Terms {REQ}</label>
               <input
                 className="field-input"
                 value={terms}
-                onChange={(e) => setTerms(e.target.value)}
+                onChange={(ev) => { setTerms(ev.target.value); setErrors(p => ({ ...p, terms: false })); }}
                 placeholder="COD"
+                style={eb('terms')}
               />
             </div>
             <div>
-              <label className="field-label">HSN Code</label>
+              <label className="field-label">HSN Code {REQ}</label>
               <input
                 className="field-input"
                 value={hsnCode}
-                onChange={(e) => setHsnCode(e.target.value)}
+                onChange={(ev) => { setHsnCode(ev.target.value); setErrors(p => ({ ...p, hsnCode: false })); }}
                 placeholder={company.defaultHsnCode}
+                style={eb('hsnCode')}
               />
             </div>
             <div>
-              <label className="field-label">Delivery City (T&amp;C)</label>
+              <label className="field-label">Delivery City {REQ}</label>
               <select
                 className="field-input"
                 value={deliveryCity}
-                onChange={(e) => setDeliveryCity(e.target.value)}
+                onChange={(ev) => { setDeliveryCity(ev.target.value); setErrors(p => ({ ...p, deliveryCity: false })); }}
+                style={eb('deliveryCity')}
               >
                 {DELIVERY_CITIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -304,177 +371,181 @@ export default function CreateInvoice() {
           </div>
         </div>
 
-        {/* ─── SECTION 2: Buyer Details ─────────────────────────────────── */}
+        {/* ── SECTION 2: Buyer Details ───────────────────────────────────── */}
         <div className="section-card">
           <div className="section-title">
             👤 Buyer Details
             <button
               className="btn-secondary"
-              style={{ marginLeft: 'auto', padding: '5px 12px', minHeight: 30, fontSize: 12 }}
+              style={{ marginLeft: 'auto', padding: '5px 11px', minHeight: 30, fontSize: 11 }}
               onClick={() => setShowPartySearch(true)}
             >
-              🔍 Search Saved
+              🔍 Search
             </button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div>
-              <label className="field-label">Buyer Name</label>
+              <label className="field-label">Buyer Name {REQ}</label>
               <input
                 className="field-input"
                 value={buyerName}
-                onChange={(e) => setBuyerName(e.target.value.toUpperCase())}
+                onChange={(ev) => { setBuyerName(ev.target.value.toUpperCase()); setErrors(p => ({ ...p, buyerName: false })); }}
                 placeholder="M/S COMPANY NAME"
                 autoCapitalize="characters"
+                style={eb('buyerName')}
               />
             </div>
             <div>
-              <label className="field-label">Address (one line per line)</label>
+              <label className="field-label">Address {REQ}</label>
               <textarea
                 className="field-input"
-                rows={4}
+                rows={3}
                 value={buyerAddress}
-                onChange={(e) => setBuyerAddress(e.target.value.toUpperCase())}
-                placeholder={'LINE 1\nLINE 2\nCITY-PINCODE'}
-                style={{ resize: 'none', lineHeight: 1.6 }}
+                onChange={(ev) => { setBuyerAddress(ev.target.value.toUpperCase()); setErrors(p => ({ ...p, buyerAddress: false })); }}
+                placeholder={'LINE 1\nLINE 2\nCITY - PINCODE'}
+                style={{ resize: 'none', lineHeight: 1.6, ...eb('buyerAddress') }}
                 autoCapitalize="characters"
               />
             </div>
             <div>
               <label className="field-label">
-                Buyer GSTIN{' '}
+                Buyer GSTIN {REQ}{' '}
                 {buyerGstin.length > 0 && (
-                  <span style={{ color: gstinValid ? '#34d399' : '#f87171', marginLeft: 4 }}>
-                    {gstinValid ? '✓' : '✗'}
+                  <span style={{ color: gstinValid ? '#10b981' : '#f87171', marginLeft: 4 }}>
+                    {gstinValid ? '✓ Valid' : '✗ Invalid'}
                   </span>
                 )}
               </label>
               <input
                 className="field-input"
                 value={buyerGstin}
-                onChange={(e) => setBuyerGstin(e.target.value.toUpperCase())}
+                onChange={(ev) => {
+                  setBuyerGstin(ev.target.value.toUpperCase());
+                  setErrors(p => ({ ...p, buyerGstin: false, buyerGstinFormat: false }));
+                }}
                 placeholder="27XXXXX0000X1ZX"
                 maxLength={15}
                 autoCapitalize="characters"
-                style={{ fontFamily: 'monospace', letterSpacing: '0.05em' }}
+                style={{
+                  fontFamily: 'monospace',
+                  letterSpacing: '0.06em',
+                  ...(errors.buyerGstin || errors.buyerGstinFormat
+                    ? { borderColor: '#ef4444', boxShadow: '0 0 0 3px rgba(239,68,68,0.12)' }
+                    : {}),
+                }}
               />
             </div>
           </div>
         </div>
 
-        {/* ─── SECTION 3: Items ─────────────────────────────────────────── */}
+        {/* ── SECTION 3: Items ───────────────────────────────────────────── */}
         <div className="section-card">
-          <div className="section-title">💎 Items</div>
+          <div className="section-title">💎 Diamond Items</div>
 
-          {/* Header */}
-          <div className="items-header">
-            <span>#</span>
-            <span>Description</span>
-            <span>CTS</span>
-            <span>Rate</span>
-            <span style={{ textAlign: 'right' }}>Amount</span>
-            <span></span>
-          </div>
-
-          {/* Item rows */}
           {items.map((item, idx) => {
             const amt = calcItemAmount(item.cts, item.rate);
+            const itemErr = errors.items?.[item.id] || {};
+            const ib = (field) => itemErr[field]
+              ? { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68,0.1)' }
+              : {};
             return (
-              <div className="item-row" key={item.id}>
-                <span className="item-sr">{idx + 1}</span>
-                <input
-                  className="desc-input"
-                  style={{
-                    width: '100%',
-                    background: '#0f172a',
-                    border: '1.5px solid rgba(255,255,255,0.08)',
-                    borderRadius: 8,
-                    color: '#f1f5f9',
-                    padding: '8px 10px',
-                    outline: 'none',
-                    minHeight: 40,
-                  }}
-                  value={item.description}
-                  onChange={(e) => updateItem(item.id, 'description', e.target.value.toUpperCase())}
-                  placeholder="Description"
-                  autoCapitalize="characters"
-                />
-                <input
-                  style={{
-                    width: '100%',
-                    background: '#0f172a',
-                    border: '1.5px solid rgba(255,255,255,0.08)',
-                    borderRadius: 8,
-                    color: '#f1f5f9',
-                    padding: '8px',
-                    outline: 'none',
-                    textAlign: 'center',
-                    minHeight: 40,
-                  }}
-                  value={item.cts}
-                  onChange={(e) => updateItem(item.id, 'cts', e.target.value)}
-                  placeholder="0.00"
-                  inputMode="decimal"
-                />
-                <input
-                  style={{
-                    width: '100%',
-                    background: '#0f172a',
-                    border: '1.5px solid rgba(255,255,255,0.08)',
-                    borderRadius: 8,
-                    color: '#f1f5f9',
-                    padding: '8px',
-                    outline: 'none',
-                    textAlign: 'center',
-                    minHeight: 40,
-                  }}
-                  value={item.rate}
-                  onChange={(e) => updateItem(item.id, 'rate', e.target.value)}
-                  placeholder="0"
-                  inputMode="numeric"
-                />
-                <div style={{
-                  textAlign: 'right',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: amt > 0 ? '#94a3b8' : '#334155',
-                  paddingRight: 4,
-                }}>
-                  {amt > 0 ? formatIndianNumber(amt) : '—'}
+              <div
+                className="item-card"
+                key={item.id}
+                style={Object.keys(itemErr).length ? { borderColor: '#fca5a5' } : {}}
+              >
+                <div className="item-card-header">
+                  <span className="item-sr-badge">{idx + 1}</span>
+                  <span className={`item-amount-display${amt > 0 ? '' : ' zero'}`}>
+                    {amt > 0 ? `₹${formatIndianNumber(amt)}` : '—'}
+                  </span>
+                  <button
+                    className="item-delete-btn"
+                    onClick={() => removeItem(item.id)}
+                    disabled={items.length === 1}
+                    style={{ opacity: items.length === 1 ? 0.3 : 1, marginLeft: 6 }}
+                  >
+                    ✕
+                  </button>
                 </div>
-                <button
-                  className="item-delete-btn"
-                  onClick={() => removeItem(item.id)}
-                  disabled={items.length === 1}
-                  style={{ opacity: items.length === 1 ? 0.3 : 1 }}
-                >
-                  ✕
-                </button>
+
+                <div style={{ marginBottom: 8 }}>
+                  <label className="item-field-label">Description {REQ}</label>
+                  <input
+                    className="item-field-input desc"
+                    value={item.description}
+                    onChange={(ev) => {
+                      updateItem(item.id, 'description', ev.target.value.toUpperCase());
+                      setErrors(p => ({
+                        ...p,
+                        items: { ...p.items, [item.id]: { ...p.items?.[item.id], description: false } },
+                      }));
+                    }}
+                    placeholder="DIAMOND DESCRIPTION"
+                    autoCapitalize="characters"
+                    style={ib('description')}
+                  />
+                </div>
+
+                <div className="item-fields-row">
+                  <div>
+                    <label className="item-field-label">CTS (Carats) {REQ}</label>
+                    <input
+                      className="item-field-input"
+                      value={item.cts}
+                      onChange={(ev) => {
+                        updateItem(item.id, 'cts', ev.target.value);
+                        setErrors(p => ({
+                          ...p,
+                          items: { ...p.items, [item.id]: { ...p.items?.[item.id], cts: false } },
+                        }));
+                      }}
+                      placeholder="0.00"
+                      inputMode="decimal"
+                      style={ib('cts')}
+                    />
+                  </div>
+                  <div>
+                    <label className="item-field-label">Rate (₹/ct) {REQ}</label>
+                    <input
+                      className="item-field-input"
+                      value={item.rate}
+                      onChange={(ev) => {
+                        updateItem(item.id, 'rate', ev.target.value);
+                        setErrors(p => ({
+                          ...p,
+                          items: { ...p.items, [item.id]: { ...p.items?.[item.id], rate: false } },
+                        }));
+                      }}
+                      placeholder="0"
+                      inputMode="numeric"
+                      style={ib('rate')}
+                    />
+                  </div>
+                </div>
               </div>
             );
           })}
 
-          {/* Add item row */}
           <button
             className="btn-secondary"
-            style={{ width: '100%', marginTop: 10 }}
+            style={{ width: '100%', marginTop: 4 }}
             onClick={addItem}
           >
             + Add Item Row
           </button>
         </div>
 
-        {/* ─── Preview info box ─────────────────────────────────────────── */}
+        {/* ── Amount in Words ────────────────────────────────────────────── */}
         {totals.grandTotal > 0 && (
-          <div className="section-card" style={{ background: 'rgba(52,211,153,0.06)', borderColor: 'rgba(52,211,153,0.2)' }}>
-            <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>Amount in Words:</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#34d399', lineHeight: 1.5 }}>
-              {amountInWords(totals.grandTotal)}
-            </div>
+          <div className="amount-words-card">
+            <div className="amount-words-label">Amount in Words</div>
+            <div className="amount-words-text">{amountInWords(totals.grandTotal)}</div>
           </div>
         )}
 
-        {/* ─── Action buttons ───────────────────────────────────────────── */}
+        {/* ── Action Buttons ─────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <button className="btn-primary" onClick={handleShare} disabled={generating}>
             {generating ? <span className="spinner" /> : '💬 Share PDF (WhatsApp)'}
@@ -485,12 +556,12 @@ export default function CreateInvoice() {
             onClick={handleGeneratePDF}
             disabled={generating}
           >
-            {generating ? <span className="spinner" /> : '📥 Download PDF'}
+            {generating ? <span className="spinner dark" /> : '📥 Download PDF'}
           </button>
         </div>
       </div>
 
-      {/* ─── Sticky Totals Bar ────────────────────────────────────────────── */}
+      {/* ── Fixed Totals Bar ───────────────────────────────────────────────── */}
       <div className="totals-bar">
         <div className="totals-bar-item">
           <span className="totals-bar-label">CTS</span>
@@ -501,16 +572,16 @@ export default function CreateInvoice() {
           <span className="totals-bar-value">₹{formatIndianNumber(totals.subtotal)}</span>
         </div>
         <div className="totals-bar-item">
-          <span className="totals-bar-label">IGST 1.5%</span>
+          <span className="totals-bar-label">IGST</span>
           <span className="totals-bar-value">₹{formatIndianNumber(totals.igstAmount)}</span>
         </div>
         <div className="totals-bar-item">
-          <span className="totals-bar-label">Grand Total</span>
+          <span className="totals-bar-label">Total</span>
           <span className="totals-bar-value grand">₹{formatIndianNumber(totals.grandTotal)}</span>
         </div>
       </div>
 
-      {/* ─── Party Search Modal ───────────────────────────────────────────── */}
+      {/* ── Party Search Modal ─────────────────────────────────────────────── */}
       {showPartySearch && (
         <PartySearchModal
           onSelect={handlePartySelect}

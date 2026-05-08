@@ -70,43 +70,33 @@ export default function InvoiceHistory() {
             className="search-input"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by invoice no., buyer..."
+            placeholder="Search invoice no., buyer..."
           />
         </div>
 
         {/* Filter tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        <div className="filter-tabs">
           {[
             { key: 'all', label: 'All' },
-            { key: 'jas_diamond', label: 'JAS' },
-            { key: 'jay_gems', label: 'JAY' },
+            { key: 'jas_diamond', label: 'JAS Diamond' },
+            { key: 'jay_gems', label: 'JAY Gems' },
           ].map((f) => (
             <button
               key={f.key}
+              className={`filter-tab${filter === f.key ? ' active' : ''}`}
               onClick={() => setFilter(f.key)}
-              style={{
-                padding: '7px 16px',
-                borderRadius: 20,
-                border: '1px solid',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-                background: filter === f.key ? '#3b82f6' : 'transparent',
-                color: filter === f.key ? 'white' : '#64748b',
-                borderColor: filter === f.key ? '#3b82f6' : 'rgba(255,255,255,0.1)',
-              }}
             >
               {f.label}
             </button>
           ))}
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: '#475569', alignSelf: 'center' }}>
+          <span style={{ marginLeft: 'auto', fontSize: 11, color: '#94a3b8', fontWeight: 600, whiteSpace: 'nowrap' }}>
             {filtered.length} invoice{filtered.length !== 1 ? 's' : ''}
           </span>
         </div>
 
         {loading && (
-          <div style={{ textAlign: 'center', padding: 40 }}>
-            <span className="spinner" />
+          <div style={{ textAlign: 'center', padding: 48 }}>
+            <span className="spinner dark" />
           </div>
         )}
 
@@ -115,7 +105,7 @@ export default function InvoiceHistory() {
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <h3>No invoices yet</h3>
+            <h3>No invoices found</h3>
             <p>Create your first invoice from the Home tab.</p>
           </div>
         )}
@@ -126,14 +116,15 @@ export default function InvoiceHistory() {
           return (
             <div className="invoice-card" key={inv.id}>
               <div className="invoice-card-header">
-                <div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="invoice-no">{inv.invoiceNo}</div>
                   <span
                     className="badge"
                     style={{
-                      background: isJas ? 'rgba(59,130,246,0.2)' : 'rgba(168,85,247,0.2)',
-                      color: isJas ? '#60a5fa' : '#c084fc',
-                      marginTop: 3,
+                      background: isJas ? '#eff6ff' : '#faf5ff',
+                      color: isJas ? '#1d4ed8' : '#7e22ce',
+                      border: `1px solid ${isJas ? '#bfdbfe' : '#e9d5ff'}`,
+                      marginTop: 4,
                     }}
                   >
                     {company?.shortName || inv.company}
@@ -143,42 +134,40 @@ export default function InvoiceHistory() {
                   ₹{formatIndianNumber(inv.totals?.grandTotal || 0)}
                 </div>
               </div>
+
               <div className="invoice-buyer">{inv.buyer?.name}</div>
+
               <div className="invoice-meta">
                 <span className="invoice-date">{formatDate(inv.invoiceDate)}</span>
-                <span style={{ color: '#334155', fontSize: 12 }}>·</span>
+                <span style={{ color: '#cbd5e1', fontSize: 12 }}>·</span>
                 <span className="invoice-date">{formatIndianNumber(inv.totals?.totalCts || 0)} cts</span>
               </div>
 
-              {/* Actions */}
-              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              {/* Actions — 2×2 grid */}
+              <div className="invoice-actions">
                 <button
                   className="btn-secondary"
-                  style={{ flex: 1, fontSize: 12, padding: '8px 10px', minHeight: 36 }}
                   onClick={() => handleDownload(inv)}
                 >
-                  📥 PDF
+                  📥 Download PDF
                 </button>
                 <button
                   className="btn-secondary"
-                  style={{ flex: 1, fontSize: 12, padding: '8px 10px', minHeight: 36 }}
                   onClick={() => handleShare(inv)}
                 >
                   💬 Share
                 </button>
                 <button
                   className="btn-secondary"
-                  style={{ flex: 1, fontSize: 12, padding: '8px 10px', minHeight: 36 }}
                   onClick={() => navigate(`/invoice/create/${inv.company}`)}
                 >
-                  ✏️ New
+                  ✏️ New Invoice
                 </button>
                 <button
                   className="btn-secondary btn-danger"
-                  style={{ padding: '8px 10px', minHeight: 36 }}
                   onClick={() => handleDelete(inv.id)}
                 >
-                  🗑️
+                  🗑️ Delete
                 </button>
               </div>
             </div>
