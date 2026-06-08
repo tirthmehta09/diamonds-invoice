@@ -30,26 +30,19 @@ export default function Login() {
     const input = identifier.trim();
 
     try {
-      let authParams = {};
+      let emailAddress = '';
       if (input.includes('@')) {
-        authParams = { email: input.toLowerCase(), password: password.trim() };
+        emailAddress = input.toLowerCase();
       } else {
-        // Clean up the phone number input
-        let cleaned = input.replace(/[^0-9+]/g, '');
-        // Default to India country code (+91) if no country code is specified
-        if (!cleaned.startsWith('+')) {
-          if (cleaned.length === 10) {
-            cleaned = `+91${cleaned}`;
-          } else if (cleaned.length === 12 && cleaned.startsWith('91')) {
-            cleaned = `+${cleaned}`;
-          } else {
-            cleaned = `+91${cleaned}`;
-          }
-        }
-        authParams = { phone: cleaned, password: password.trim() };
+        // Clean up phone number input and map to a virtual email
+        const cleaned = input.replace(/[^0-9]/g, ''); // Keep only digits
+        emailAddress = `${cleaned}@family.com`;
       }
 
-      const { error } = await client.auth.signInWithPassword(authParams);
+      const { error } = await client.auth.signInWithPassword({
+        email: emailAddress,
+        password: password.trim(),
+      });
 
       if (error) throw error;
       showToast('Logged in successfully!', 'success');
