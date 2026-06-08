@@ -10,8 +10,8 @@ let currentKey = null;
  * or local storage fallback.
  */
 export function getSupabaseConfig() {
-  let url = import.meta.env.VITE_SUPABASE_URL || '';
-  let key = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+  let url = import.meta.env.VITE_SUPABASE_URL || 'https://jcaiasztdqccbytzpcng.supabase.co';
+  let key = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_F4IfWexI0PI1Wa0aCmi-gg_GwewoKUS';
   let bucket = import.meta.env.VITE_SUPABASE_BUCKET || 'invoices';
 
   try {
