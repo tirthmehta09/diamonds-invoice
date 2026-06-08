@@ -479,14 +479,46 @@ export default function Storage() {
     }
   };
 
+  const demoItems = [
+    {
+      name: 'INVOICES_2026',
+      created_at: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
+    },
+    {
+      name: 'PARTIES_EXPORTS',
+      created_at: new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString(),
+    },
+    {
+      name: '01-JAS-001-JAY_DIAMOND.pdf',
+      id: 'demo-1',
+      metadata: { size: 125400 },
+      created_at: new Date().toISOString(),
+    },
+    {
+      name: '02-JAS-002-SRI_GURU.pdf',
+      id: 'demo-2',
+      metadata: { size: 98400 },
+      created_at: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString(),
+    },
+    {
+      name: 'JAS_Diamond_Logo.png',
+      id: 'demo-3',
+      metadata: { size: 45600 },
+      created_at: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
+    }
+  ];
+
+  const isDemoMode = isConfigured && !loading && items.length === 0 && !path;
+  const itemsToShow = isDemoMode ? demoItems : items;
+
   const renderBreadcrumbs = () => {
-    if (!path) return <span style={{ fontWeight: 600, color: '#475569' }}>Root</span>;
+    if (!path) return <span className="storage-breadcrumb-item active">Root</span>;
 
     const parts = path.split('/');
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 13, color: '#64748b' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
         <span
-          style={{ color: '#2563eb', cursor: 'pointer', fontWeight: 600 }}
+          className="storage-breadcrumb-item"
           onClick={() => { setPath(''); setSelectedFiles([]); }}
         >
           Root
@@ -495,13 +527,13 @@ export default function Storage() {
           const current = parts.slice(0, idx + 1).join('/');
           const isLast = idx === parts.length - 1;
           return (
-            <span key={current} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span key={current} style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#94a3b8', fontSize: 12 }}>
               <span>/</span>
               {isLast ? (
-                <span style={{ fontWeight: 600, color: '#0f172a' }}>{p}</span>
+                <span className="storage-breadcrumb-item active">{p}</span>
               ) : (
                 <span
-                  style={{ color: '#2563eb', cursor: 'pointer', fontWeight: 600 }}
+                  className="storage-breadcrumb-item"
                   onClick={() => { setPath(current); setSelectedFiles([]); }}
                 >
                   {p}
@@ -525,10 +557,10 @@ export default function Storage() {
     <>
       {/* ── Top Bar ────────────────────────────────────────────────────────── */}
       <div className="top-bar">
-        <h1 style={{ fontSize: 17, fontWeight: 700 }}>File Storage</h1>
+        <h1>File Storage</h1>
         <button
           className="btn-secondary"
-          style={{ padding: '8px 10px', minHeight: 36, display: 'flex', alignItems: 'center', gap: 4, border: '1px solid #cbd5e1' }}
+          style={{ padding: '8px 14px', minHeight: 38, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
           onClick={handleLogout}
         >
           Logout
@@ -538,13 +570,13 @@ export default function Storage() {
       <div className="page-content" style={{ paddingBottom: 160 }}>
         {/* ── SECTION 2: Navigation Breadcrumbs ──────────────────────────── */}
         {isConfigured && (
-          <div className="section-card" style={{ marginBottom: 10, padding: '12px 14px' }}>
+          <div className="storage-breadcrumbs-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               {renderBreadcrumbs()}
               {path && (
                 <button
                   className="btn-secondary"
-                  style={{ padding: '4px 8px', fontSize: 11, minHeight: 24 }}
+                  style={{ padding: '4px 10px', fontSize: 11, minHeight: 28 }}
                   onClick={() => {
                     const idx = path.lastIndexOf('/');
                     setPath(idx === -1 ? '' : path.substring(0, idx));
@@ -560,30 +592,36 @@ export default function Storage() {
 
         {/* ── SECTION 3: Operations Toolbar ─────────────────────────────── */}
         {isConfigured && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
+          <div className="storage-toolbar">
             <button
-              className="btn-secondary"
-              style={{ fontSize: 12, minHeight: 44, padding: 8, flexDirection: 'column', gap: 4 }}
+              className="storage-tool-btn"
               onClick={handleCreateFolderClick}
               disabled={creatingFolder}
             >
-              📁 + Folder
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M9 13h6m-3-3v6m-9 1V4a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              </svg>
+              + Folder
             </button>
             <button
-              className="btn-secondary"
-              style={{ fontSize: 12, minHeight: 44, padding: 8, flexDirection: 'column', gap: 4 }}
+              className="storage-tool-btn"
               onClick={triggerFileUpload}
               disabled={uploading}
             >
-              📄 Upload File(s)
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Upload File(s)
             </button>
             <button
-              className="btn-secondary"
-              style={{ fontSize: 12, minHeight: 44, padding: 8, flexDirection: 'column', gap: 4 }}
+              className="storage-tool-btn"
               onClick={triggerFolderUpload}
               disabled={uploading}
             >
-              📦 Upload Folder
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5M5 19v-4m16 4v-4m-4-8l-4-4m0 0L9 7m3-3v12" />
+              </svg>
+              Upload Folder
             </button>
           </div>
         )}
@@ -608,26 +646,47 @@ export default function Storage() {
 
         {/* ── SECTION 4: Directory list ──────────────────────────────────── */}
         {isConfigured && (
-          <div className="section-card" style={{ padding: 0 }}>
-            {loading && (
-              <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                <span className="spinner" />
-                <p style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>Refreshing contents...</p>
+          <div className="storage-list-card">
+            {/* Banner for Demo mode */}
+            {isDemoMode && (
+              <div style={{
+                background: '#fffbeb',
+                borderBottom: '1px solid #fde68a',
+                padding: '10px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#b45309', fontWeight: 600 }}>
+                  <span className="preview-data-badge">Preview Mode</span>
+                  <span>Showing demo files because storage is empty.</span>
+                </div>
               </div>
             )}
 
-            {!loading && items.length === 0 && (
-              <div className="empty-state" style={{ padding: '50px 16px', textAlign: 'center' }}>
-                <p style={{ color: '#64748b', fontSize: 14, fontWeight: 500 }}>This folder is empty.</p>
-                <p style={{ color: '#94a3b8', fontSize: 11, marginTop: 4 }}>
+            {loading && (
+              <div style={{ textAlign: 'center', padding: '48px 0' }}>
+                <span className="spinner dark" />
+                <p style={{ marginTop: 10, fontSize: 12, color: '#64748b', fontWeight: 600 }}>Refreshing contents...</p>
+              </div>
+            )}
+
+            {!loading && itemsToShow.length === 0 && (
+              <div className="empty-state" style={{ padding: '56px 16px', textAlign: 'center' }}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+                <h3>This folder is empty</h3>
+                <p style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>
                   Use the toolbar above to upload files/folders or make a new directory!
                 </p>
               </div>
             )}
 
-            {!loading && items.length > 0 && (
+            {!loading && itemsToShow.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {items.map((item) => {
+                {itemsToShow.map((item) => {
                   const isFolder = !item.id && !item.metadata;
                   const isPdf = item.name.toLowerCase().endsWith('.pdf');
                   const itemChecked = selectedFiles.includes(item.name);
@@ -635,18 +694,10 @@ export default function Storage() {
                   return (
                     <div
                       key={item.name}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '12px 14px',
-                        borderBottom: '1px solid #f1f5f9',
-                        background: itemChecked ? 'rgba(99,102,241,0.04)' : 'transparent',
-                        transition: 'background 0.2s',
-                      }}
+                      className={`storage-item-row${itemChecked ? ' selected' : ''}`}
                     >
                       {/* Checkbox (only for PDF files for merging) */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
                         {isPdf ? (
                           <input
                             type="checkbox"
@@ -656,7 +707,7 @@ export default function Storage() {
                               width: 17,
                               height: 17,
                               cursor: 'pointer',
-                              accentColor: '#6366f1'
+                              accentColor: '#4f46e5'
                             }}
                           />
                         ) : (
@@ -669,12 +720,20 @@ export default function Storage() {
                           style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 10,
+                            gap: 12,
                             cursor: isFolder ? 'pointer' : 'default',
                             flex: 1,
                             minWidth: 0,
                           }}
-                          onClick={() => isFolder && handleFolderClick(item.name)}
+                          onClick={() => {
+                            if (isFolder) {
+                              if (isDemoMode) {
+                                showToast('Demo folders cannot be opened', 'info');
+                              } else {
+                                handleFolderClick(item.name);
+                              }
+                            }
+                          }}
                         >
                           {isFolder ? <FolderIcon /> : isPdf ? <PDFFileIcon /> : <FileIcon />}
                           
@@ -682,8 +741,8 @@ export default function Storage() {
                             <span
                               style={{
                                 fontSize: 13.5,
-                                fontWeight: isFolder ? '600' : '500',
-                                color: isFolder ? '#2563eb' : '#0f172a',
+                                fontWeight: isFolder ? '700' : '600',
+                                color: isFolder ? '#4f46e5' : '#0f172a',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap'
@@ -692,8 +751,8 @@ export default function Storage() {
                               {item.name}
                             </span>
                             {!isFolder && (
-                              <span style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 2 }}>
-                                {formatBytes(item.metadata?.size)} • {new Date(item.created_at).toLocaleDateString()}
+                              <span style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, fontWeight: 500 }}>
+                                {formatBytes(item.metadata?.size || 102400)} • {new Date(item.created_at).toLocaleDateString()}
                               </span>
                             )}
                           </div>
@@ -701,21 +760,33 @@ export default function Storage() {
                       </div>
 
                       {/* Row Actions */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 10 }}>
                         {!isFolder && (
                           <>
                             <button
                               className="btn-secondary"
-                              style={{ padding: 6, minHeight: 30, borderRadius: 6 }}
-                              onClick={() => handleDownloadFile(item.name)}
+                              style={{ padding: 8, minHeight: 34, minWidth: 34, borderRadius: 8 }}
+                              onClick={() => {
+                                if (isDemoMode) {
+                                  showToast('Demo files cannot be downloaded', 'info');
+                                } else {
+                                  handleDownloadFile(item.name);
+                                }
+                              }}
                               title="Download"
                             >
                               <DownloadIcon />
                             </button>
                             <button
                               className="btn-secondary"
-                              style={{ padding: 6, minHeight: 30, borderRadius: 6 }}
-                              onClick={() => handleShareFile(item.name)}
+                              style={{ padding: 8, minHeight: 34, minWidth: 34, borderRadius: 8 }}
+                              onClick={() => {
+                                if (isDemoMode) {
+                                  showToast('Demo files cannot be shared', 'info');
+                                } else {
+                                  handleShareFile(item.name);
+                                }
+                              }}
                               title="Share"
                             >
                               <ShareIcon />
@@ -725,13 +796,20 @@ export default function Storage() {
                         <button
                           className="btn-secondary"
                           style={{
-                            padding: 6,
-                            minHeight: 30,
-                            borderRadius: 6,
+                            padding: 8,
+                            minHeight: 34,
+                            minWidth: 34,
+                            borderRadius: 8,
                             color: '#ef4444',
                             borderColor: 'transparent'
                           }}
-                          onClick={() => handleDeleteItem(item)}
+                          onClick={() => {
+                            if (isDemoMode) {
+                              showToast('Demo files cannot be deleted', 'info');
+                            } else {
+                              handleDeleteItem(item);
+                            }
+                          }}
                           title="Delete"
                         >
                           <TrashIcon />
@@ -758,28 +836,8 @@ export default function Storage() {
 
       {/* ── Floating Merge bar ─────────────────────────────────────────────── */}
       {selectedFiles.length >= 2 && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: 66,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 'calc(100% - 24px)',
-            maxWidth: 456,
-            background: 'rgba(15, 23, 42, 0.95)',
-            backdropFilter: 'blur(12px)',
-            borderRadius: 14,
-            padding: '12px 14px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.25)',
-            zIndex: 49,
-            animation: 'sheet-up 0.2s ease-out',
-            color: '#f8fafc'
-          }}
-        >
-          <div style={{ fontSize: 13, fontWeight: 500 }}>
+        <div className="floating-merge-bar">
+          <div style={{ fontSize: 13, fontWeight: 700 }}>
             ⚡ {selectedFiles.length} PDFs selected
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -791,7 +849,8 @@ export default function Storage() {
                 fontSize: 12,
                 color: '#cbd5e1',
                 borderColor: '#475569',
-                background: 'transparent'
+                background: 'transparent',
+                boxShadow: 'none'
               }}
               onClick={() => setSelectedFiles([])}
             >
@@ -803,9 +862,10 @@ export default function Storage() {
                 padding: '6px 14px',
                 minHeight: 34,
                 fontSize: 12,
-                background: '#6366f1',
+                background: '#4f46e5',
                 color: '#ffffff',
-                border: 'none'
+                border: 'none',
+                boxShadow: 'none'
               }}
               onClick={triggerPDFMergeClick}
             >
@@ -866,12 +926,12 @@ export default function Storage() {
                 style={{
                   flex: 2,
                   minHeight: 44,
-                  background: mergedNameError || !mergedName.trim() ? '#94a3b8' : '#6366f1',
+                  background: mergedNameError || !mergedName.trim() ? '#94a3b8' : '#4f46e5',
                   border: 'none',
                   color: '#ffffff'
                 }}
                 disabled={!!mergedNameError || !mergedName.trim() || merging}
-                onClick={executePDFMerge}
+                onClick={isDemoMode ? () => { setShowMergeModal(false); showToast('PDF Merge is disabled for demo files', 'error'); } : executePDFMerge}
               >
                 Confirm & Merge
               </button>

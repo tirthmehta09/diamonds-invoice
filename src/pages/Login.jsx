@@ -61,16 +61,17 @@ export default function Login() {
       justifyContent: 'center',
       height: '100dvh',
       overflow: 'hidden',
-      background: 'linear-gradient(135deg, #eff6ff 0%, #faf5ff 100%)',
+      background: 'radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.15), transparent 50%), radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.12), transparent 50%), #f8fafc',
       padding: '16px 14px',
     }}>
       <div style={{
         width: '100%',
         maxWidth: 400,
-        padding: '32px 24px',
-        borderRadius: 20,
-        boxShadow: '0 10px 40px rgba(0,0,0,0.10)',
+        padding: '36px 28px',
+        borderRadius: 'var(--radius-xl)',
+        boxShadow: 'var(--shadow-xl)',
         background: '#ffffff',
+        border: '1px solid var(--border-light)',
         display: 'flex',
         flexDirection: 'column',
       }}>
@@ -80,21 +81,21 @@ export default function Login() {
             width: 60,
             height: 60,
             borderRadius: 18,
-            background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)',
+            background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            margin: '0 auto 14px',
-            boxShadow: '0 6px 20px rgba(168,85,247,0.35)'
+            margin: '0 auto 16px',
+            boxShadow: '0 8px 20px rgba(99, 102, 241, 0.25)'
           }}>
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
             </svg>
           </div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', margin: '0 0 6px' }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', margin: '0 0 6px' }}>
             Diamond Invoice
           </h1>
-          <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
+          <p style={{ fontSize: 13, color: '#64748b', fontWeight: 500, margin: 0 }}>
             Sign in to continue
           </p>
         </div>

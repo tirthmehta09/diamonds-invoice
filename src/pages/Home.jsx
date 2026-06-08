@@ -61,16 +61,33 @@ export default function Home() {
         <div
           className="section-card"
           style={{
-            background: 'linear-gradient(135deg, #eff6ff 0%, #faf5ff 100%)',
-            borderColor: '#e0e7ff',
-            marginBottom: 20,
-            padding: '18px 16px',
+            background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+            borderColor: 'transparent',
+            marginBottom: 24,
+            padding: '24px 20px',
+            color: '#ffffff',
+            position: 'relative',
+            overflow: 'hidden',
+            boxShadow: 'var(--shadow-lg)'
           }}
         >
-          <h2 style={{ fontSize: 17, fontWeight: 800, color: '#1e3a8a', marginBottom: 5, marginTop: 0 }}>
+          {/* Subtle ambient light bubble in banner */}
+          <div style={{
+            position: 'absolute',
+            top: '-50%',
+            right: '-10%',
+            width: 150,
+            height: 150,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.08)',
+            filter: 'blur(20px)',
+            pointerEvents: 'none'
+          }} />
+          
+          <h2 style={{ fontSize: 19, fontWeight: 800, color: '#ffffff', marginBottom: 6, marginTop: 0, letterSpacing: '-0.02em' }}>
             Welcome Back 👋
           </h2>
-          <p style={{ fontSize: 13, color: '#475569', margin: 0, lineHeight: 1.6 }}>
+          <p style={{ fontSize: 13, color: '#e0e7ff', margin: 0, lineHeight: 1.6, fontWeight: 500 }}>
             Create professional GST invoices instantly.<br />
             Generate PDF and share on WhatsApp in seconds.
           </p>

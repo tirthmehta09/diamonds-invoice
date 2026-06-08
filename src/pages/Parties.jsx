@@ -95,18 +95,42 @@ export default function Parties() {
   const [editing, setEditing] = useState(null);
   const showToast = useToast();
 
+  const demoParties = [
+    {
+      id: 'demo-p1',
+      name: 'M/S OM JEWELS LUXURY',
+      gstin: '27AADCO8542M1ZQ',
+      addressLines: ['102 GOKUL ARCADE', 'S.V. ROAD, VILE PARLE EAST', 'MUMBAI - 400057'],
+      defaultTerms: 'COD'
+    },
+    {
+      id: 'demo-p2',
+      name: 'M/S DIAMOND PALACE',
+      gstin: '24ABCDE1234F1ZA',
+      addressLines: ['405 RATNA SAGAR APARTMENTS', 'VARACHHA ROAD', 'SURAT - 395006'],
+      defaultTerms: '30 DAYS'
+    }
+  ];
+
+  const isDemo = parties.length === 0 && !loading;
+  const partiesToShow = isDemo ? demoParties : parties;
+
   const load = () => {
     getAllParties().then((all) => { setParties(all); setLoading(false); });
   };
 
   useEffect(() => { load(); }, []);
 
-  const filtered = parties.filter((p) => {
+  const filtered = partiesToShow.filter((p) => {
     const q = query.toLowerCase();
     return !q || p.name.toLowerCase().includes(q) || (p.gstin || '').toLowerCase().includes(q);
   });
 
   const handleSave = async (party) => {
+    if (isDemo && party.id.startsWith('demo-')) {
+      showToast('Demo party editing is disabled', 'info');
+      return;
+    }
     await saveParty(party);
     setEditing(null);
     showToast('Party saved!', 'success');
@@ -114,6 +138,10 @@ export default function Parties() {
   };
 
   const handleDelete = async (id) => {
+    if (isDemo && id.startsWith('demo-')) {
+      showToast('Demo party operations are disabled', 'info');
+      return;
+    }
     if (!window.confirm('Delete this party?')) return;
     await deleteParty(id);
     showToast('Party deleted', 'info');
@@ -137,7 +165,7 @@ export default function Parties() {
 
         {/* Add/Edit form */}
         {editing === 'new' && (
-          <div className="section-card" style={{ borderColor: '#bfdbfe', borderWidth: 1.5 }}>
+          <div className="section-card" style={{ borderColor: '#4f46e5', borderWidth: 1.5 }}>
             <div className="section-title">✏️ New Party</div>
             <PartyForm onSave={handleSave} onCancel={() => setEditing(null)} />
           </div>
@@ -155,6 +183,26 @@ export default function Parties() {
             placeholder="Search parties..."
           />
         </div>
+
+        {/* Banner for Demo mode */}
+        {isDemo && (
+          <div style={{
+            background: '#fffbeb',
+            border: '1px solid #fde68a',
+            borderRadius: 'var(--radius-md)',
+            padding: '10px 14px',
+            marginBottom: 14,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#b45309', fontWeight: 600 }}>
+              <span className="preview-data-badge">Preview Mode</span>
+              <span>Showing demo parties because your list is empty.</span>
+            </div>
+          </div>
+        )}
 
         {loading && (
           <div style={{ textAlign: 'center', padding: 48 }}>
@@ -175,7 +223,7 @@ export default function Parties() {
         {filtered.map((party) => (
           <div key={party.id}>
             {editing === party.id ? (
-              <div className="section-card" style={{ borderColor: '#bfdbfe', borderWidth: 1.5 }}>
+              <div className="section-card" style={{ borderColor: '#4f46e5', borderWidth: 1.5 }}>
                 <div className="section-title">✏️ Edit Party</div>
                 <PartyForm party={party} onSave={handleSave} onCancel={() => setEditing(null)} />
               </div>
@@ -186,13 +234,13 @@ export default function Parties() {
                     <div className="party-name">{party.name}</div>
                     {party.gstin && <div className="party-gstin">GSTIN: {party.gstin}</div>}
                     {party.addressLines?.length > 0 && (
-                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, lineHeight: 1.4 }}>
+                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 6, lineHeight: 1.4, fontWeight: 500 }}>
                         {party.addressLines.join(', ')}
                       </div>
                     )}
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 12 }}>
                   <button
                     className="btn-secondary"
                     style={{ fontSize: 13, padding: '9px 12px', minHeight: 38 }}

@@ -16,6 +16,40 @@ export default function InvoiceHistory() {
   const navigate = useNavigate();
   const showToast = useToast();
 
+  const demoInvoices = [
+    {
+      id: 'demo-inv-1',
+      company: 'jas_diamond',
+      invoiceNo: 'JAS/26-27/001',
+      invoiceDate: '2026-06-05',
+      buyer: {
+        name: 'M/S OM JEWELS LUXURY',
+        gstin: '27AADCO8542M1ZQ'
+      },
+      totals: {
+        totalCts: 4.85,
+        grandTotal: 154800
+      }
+    },
+    {
+      id: 'demo-inv-2',
+      company: 'jay_gems',
+      invoiceNo: 'JAY/26-27/002',
+      invoiceDate: '2026-06-03',
+      buyer: {
+        name: 'M/S DIAMOND PALACE',
+        gstin: '24ABCDE1234F1ZA'
+      },
+      totals: {
+        totalCts: 12.34,
+        grandTotal: 843200
+      }
+    }
+  ];
+
+  const isDemo = invoices.length === 0 && !loading;
+  const invoicesToShow = isDemo ? demoInvoices : invoices;
+
   const load = () => {
     getAllInvoices().then((all) => {
       setInvoices(all);
@@ -25,7 +59,7 @@ export default function InvoiceHistory() {
 
   useEffect(() => { load(); }, []);
 
-  const filtered = invoices.filter((inv) => {
+  const filtered = invoicesToShow.filter((inv) => {
     const q = query.toLowerCase();
     const matchQ = !q ||
       inv.invoiceNo?.toLowerCase().includes(q) ||
@@ -36,6 +70,10 @@ export default function InvoiceHistory() {
   });
 
   const handleDelete = async (id) => {
+    if (isDemo) {
+      showToast('Demo invoice operations are disabled', 'info');
+      return;
+    }
     if (!window.confirm('Delete this invoice?')) return;
     await deleteInvoice(id);
     showToast('Invoice deleted', 'info');
@@ -43,12 +81,20 @@ export default function InvoiceHistory() {
   };
 
   const handleDownload = (inv) => {
+    if (isDemo) {
+      showToast('Demo invoice operations are disabled', 'info');
+      return;
+    }
     const company = COMPANIES[inv.company];
     if (!company) return;
     downloadInvoicePDF(inv, company);
   };
 
   const handleShare = async (inv) => {
+    if (isDemo) {
+      showToast('Demo invoice operations are disabled', 'info');
+      return;
+    }
     const company = COMPANIES[inv.company];
     if (!company) return;
     await shareInvoicePDF(inv, company);
@@ -93,6 +139,26 @@ export default function InvoiceHistory() {
             {filtered.length} invoice{filtered.length !== 1 ? 's' : ''}
           </span>
         </div>
+
+        {/* Banner for Demo mode */}
+        {isDemo && (
+          <div style={{
+            background: '#fffbeb',
+            border: '1px solid #fde68a',
+            borderRadius: 'var(--radius-md)',
+            padding: '10px 14px',
+            marginBottom: 14,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#b45309', fontWeight: 600 }}>
+              <span className="preview-data-badge">Preview Mode</span>
+              <span>Showing demo invoices because history is empty.</span>
+            </div>
+          </div>
+        )}
 
         {loading && (
           <div style={{ textAlign: 'center', padding: 48 }}>
