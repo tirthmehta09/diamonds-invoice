@@ -16,6 +16,7 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // 1. Session setup and auth state listener
   useEffect(() => {
     const client = getSupabaseClient();
     if (!client) {
@@ -38,6 +39,71 @@ export default function App() {
       subscription.unsubscribe();
     };
   }, []);
+
+  // 2. Session absolute expiry (30 mins) & Inactivity timeout (5 mins)
+  useEffect(() => {
+    if (!session) {
+      localStorage.removeItem('session_start_time');
+      return;
+    }
+
+    // Absolute Expiry Setup
+    let startTime = localStorage.getItem('session_start_time');
+    if (!startTime) {
+      startTime = Date.now().toString();
+      localStorage.setItem('session_start_time', startTime);
+    }
+
+    const absoluteLimit = 30 * 60 * 1000; // 30 minutes
+    const checkSessionExpiry = () => {
+      const start = parseInt(localStorage.getItem('session_start_time') || '0', 10);
+      if (start > 0 && Date.now() - start >= absoluteLimit) {
+        handleAutoLogout('Session expired after 30 minutes.');
+      }
+    };
+
+    // Idle Inactivity Setup
+    const idleLimit = 5 * 60 * 1000; // 5 minutes
+    let lastActivity = Date.now();
+
+    const checkIdle = () => {
+      if (Date.now() - lastActivity >= idleLimit) {
+        handleAutoLogout('Logged out due to 5 minutes of inactivity.');
+      }
+    };
+
+    const updateActivity = () => {
+      lastActivity = Date.now();
+    };
+
+    const handleAutoLogout = async (message) => {
+      const client = getSupabaseClient();
+      if (client) {
+        await client.auth.signOut();
+        localStorage.removeItem('session_start_time');
+        alert(message);
+      }
+    };
+
+    // Listen to all interaction events on the window
+    const events = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll', 'click'];
+    events.forEach((event) => {
+      window.addEventListener(event, updateActivity, { passive: true });
+    });
+
+    // Run interval checks every 5 seconds
+    const intervalId = setInterval(() => {
+      checkSessionExpiry();
+      checkIdle();
+    }, 5000);
+
+    return () => {
+      events.forEach((event) => {
+        window.removeEventListener(event, updateActivity);
+      });
+      clearInterval(intervalId);
+    };
+  }, [session]);
 
   const hideNav = location.pathname.startsWith('/invoice/create') || location.pathname.startsWith('/invoice/edit');
 
