@@ -108,7 +108,7 @@ export default function Login() {
               className="field-input"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="e.g. 9819185864 or tirth@mehta.com"
+              placeholder="e.g. 98XXXXXXXX or email@domain.com"
               autoFocus
               style={{ fontSize: 15 }}
             />
@@ -159,7 +159,7 @@ export default function Login() {
           color: '#64748b',
           lineHeight: 1.5
         }}>
-          💡 <strong style={{ color: '#475569' }}>Family Login Note:</strong> You can sign in using your 10-digit Phone Number (e.g., <code style={{ fontFamily: 'monospace' }}>9819185864</code>) or your registered Email, along with your password.
+          💡 <strong style={{ color: '#475569' }}>Family Login Note:</strong> You can sign in using your 10-digit Phone Number (e.g., <code style={{ fontFamily: 'monospace' }}>98XXXXXXXX</code>) or your registered Email, along with your password.
         </div>
       </div>
     </div>
