@@ -33,6 +33,7 @@ export default function CreateInvoice() {
   const [terms, setTerms] = useState(company?.defaultTerms || 'COD');
   const [hsnCode, setHsnCode] = useState(company?.defaultHsnCode || '');
   const [deliveryCity, setDeliveryCity] = useState(company?.defaultDeliveryCity || 'MUMBAI');
+  const [igstRate, setIgstRate] = useState(company ? String(company.igstRate * 100) : '1.5');
 
   const [buyerName, setBuyerName] = useState('');
   const [buyerAddress, setBuyerAddress] = useState('');
@@ -85,8 +86,11 @@ export default function CreateInvoice() {
   };
 
   useEffect(() => {
-    if (company && !invoiceId) {
-      setInvoiceNo(getNextInvoiceNumber(company.id));
+    if (company) {
+      if (!invoiceId) {
+        setInvoiceNo(getNextInvoiceNumber(company.id));
+      }
+      setIgstRate(String(company.igstRate * 100));
     }
   }, [company, invoiceId]);
 
@@ -119,7 +123,7 @@ export default function CreateInvoice() {
   }, []);
 
   // ── totals ────────────────────────────────────────────────────────────────
-  const totals = calcTotals(items, company.igstRate);
+  const totals = calcTotals(items, parseNumber(igstRate) / 100);
 
   // ── build invoice ─────────────────────────────────────────────────────────
   const buildInvoice = () => ({
@@ -143,7 +147,10 @@ export default function CreateInvoice() {
       cts: parseNumber(item.cts),
       rate: parseNumber(item.rate),
     })),
-    totals,
+    totals: {
+      ...totals,
+      igstRate: parseNumber(igstRate) / 100,
+    },
     amountInWords: amountInWords(totals.grandTotal),
     status: 'final',
     createdAt: new Date().toISOString(),
@@ -164,6 +171,15 @@ export default function CreateInvoice() {
     if (!buyerName.trim())        newErrors.buyerName = true;
     if (!buyerAddress.trim())     newErrors.buyerAddress = true;
     if (!buyerGstin.trim())       newErrors.buyerGstin = true;
+
+    if (!igstRate.trim()) {
+      newErrors.igstRate = true;
+    } else {
+      const parsed = parseFloat(igstRate);
+      if (isNaN(parsed) || parsed < 0) {
+        newErrors.igstRate = true;
+      }
+    }
 
     const gstinPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
     if (buyerGstin.trim() && !gstinPattern.test(buyerGstin.trim())) {
@@ -191,6 +207,7 @@ export default function CreateInvoice() {
     if (newErrors.buyerAddress)     { showToast('Buyer Address is required', 'error'); return false; }
     if (newErrors.buyerGstin)       { showToast('Buyer GSTIN is required', 'error'); return false; }
     if (newErrors.buyerGstinFormat) { showToast('Buyer GSTIN format is invalid', 'error'); return false; }
+    if (newErrors.igstRate)         { showToast('IGST Rate must be a valid positive number', 'error'); return false; }
     if (newErrors.items)            { showToast('Each item needs Description, CTS & Rate', 'error'); return false; }
     return true;
   };
@@ -297,6 +314,16 @@ export default function CreateInvoice() {
     fetchFolders();
   };
 
+  const handleSaveClick = () => {
+    if (!validate()) return;
+    const suggested = getSuggestedFilename();
+    setCustomFilename(suggested);
+    setFilenameError('');
+    setNamingAction('save');
+    setShowFilenameModal(true);
+    fetchFolders();
+  };
+
   const confirmAndSaveInvoice = async () => {
     const regex = /^\d{2,}-[A-Z0-9_\s-]+-\d{4}-\d{2}$/;
     if (!regex.test(customFilename)) {
@@ -350,14 +377,19 @@ export default function CreateInvoice() {
       if (namingAction === 'share') {
         await shareInvoicePDF(invoice, company, customFilename);
         showToast('Invoice shared!', 'success');
-      } else {
+      } else if (namingAction === 'download') {
         downloadInvoicePDF(invoice, company, customFilename);
         showToast('PDF downloaded!', 'success');
+      } else {
+        showToast('Invoice saved successfully!', 'success');
       }
       await checkAndPromptPartySave();
+      if (namingAction === 'save') {
+        navigate('/history');
+      }
     } catch (err) {
       console.error(err);
-      showToast(`Error ${namingAction === 'share' ? 'sharing' : 'downloading'} PDF`, 'error');
+      showToast(`Error processing invoice`, 'error');
     } finally {
       setGenerating(false);
       setNamingAction(null);
@@ -410,7 +442,7 @@ export default function CreateInvoice() {
 
         <div className="desktop-grid" style={{ marginBottom: 16 }}>
           {/* ── SECTION 1: Invoice Details ─────────────────────────────────── */}
-          <div className="section-card" style={{ margin: 0 }}>
+          <div className="section-card">
             <div className="section-title">📋 Invoice Details</div>
 
             <div style={{ marginBottom: 10 }}>
@@ -491,11 +523,25 @@ export default function CreateInvoice() {
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="field-label">IGST Rate (%) {REQ}</label>
+                <input
+                  className="field-input"
+                  value={igstRate}
+                  onChange={(ev) => {
+                    setIgstRate(ev.target.value);
+                    setErrors(p => ({ ...p, igstRate: false }));
+                  }}
+                  placeholder="1.5"
+                  inputMode="decimal"
+                  style={eb('igstRate')}
+                />
+              </div>
             </div>
           </div>
 
           {/* ── SECTION 2: Buyer Details ───────────────────────────────────── */}
-          <div className="section-card" style={{ margin: 0 }}>
+          <div className="section-card">
             <div className="section-title">
               👤 Buyer Details
               <button
@@ -671,17 +717,32 @@ export default function CreateInvoice() {
 
         {/* ── Action Buttons ─────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <button className="btn-primary" onClick={handleShareClick} disabled={generating}>
-            {generating ? <span className="spinner" /> : '💬 Share PDF (WhatsApp)'}
-          </button>
           <button
-            className="btn-secondary"
-            style={{ width: '100%' }}
-            onClick={handleDownloadClick}
+            className="btn-primary"
+            onClick={handleSaveClick}
             disabled={generating}
+            style={{ background: accentColor, boxShadow: `0 4px 14px ${accentColor}40` }}
           >
-            {generating ? <span className="spinner dark" /> : '📥 Download PDF'}
+            {generating && namingAction === 'save' ? <span className="spinner" /> : '💾 Save Bill to Cloud'}
           </button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <button
+              className="btn-secondary"
+              style={{ width: '100%' }}
+              onClick={handleShareClick}
+              disabled={generating}
+            >
+              {generating && namingAction === 'share' ? <span className="spinner dark" /> : '💬 Share PDF'}
+            </button>
+            <button
+              className="btn-secondary"
+              style={{ width: '100%' }}
+              onClick={handleDownloadClick}
+              disabled={generating}
+            >
+              {generating && namingAction === 'download' ? <span className="spinner dark" /> : '📥 Download PDF'}
+            </button>
+          </div>
         </div>
       </div>
 

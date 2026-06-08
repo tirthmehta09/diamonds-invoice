@@ -224,12 +224,12 @@ export default function Parties() {
           {filtered.map((party) => (
             <div key={party.id}>
               {editing === party.id ? (
-                <div className="section-card" style={{ borderColor: '#4f46e5', borderWidth: 1.5, margin: 0 }}>
+                <div className="section-card" style={{ borderColor: '#4f46e5', borderWidth: 1.5 }}>
                   <div className="section-title">✏️ Edit Party</div>
                   <PartyForm party={party} onSave={handleSave} onCancel={() => setEditing(null)} />
                 </div>
               ) : (
-                <div className="party-card" style={{ margin: 0 }}>
+                <div className="party-card">
                   <div className="party-card-header">
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="party-name">{party.name}</div>

@@ -181,7 +181,7 @@ export default function InvoiceHistory() {
             const company = COMPANIES[inv.company];
             const isJas = inv.company === 'jas_diamond';
             return (
-              <div className="invoice-card" key={inv.id} style={{ margin: 0 }}>
+              <div className="invoice-card" key={inv.id}>
                 <div className="invoice-card-header">
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="invoice-no">{inv.invoiceNo}</div>

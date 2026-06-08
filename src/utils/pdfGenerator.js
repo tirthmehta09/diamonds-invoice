@@ -74,8 +74,12 @@ const tC  = (doc, t, x, w, y, sz, bold = false) =>
 export function generateInvoicePDF(invoice, company) {
   const doc = new jsPDF({ unit: 'mm', format: [PW, PH], orientation: 'portrait' });
 
+  const igstRate = invoice.totals?.igstRate !== undefined 
+    ? invoice.totals.igstRate 
+    : (invoice.igstRate !== undefined ? invoice.igstRate : company.igstRate);
+
   const { totalCts, subtotal, igstAmount, grandTotal } =
-    calcTotals(invoice.items, company.igstRate);
+    calcTotals(invoice.items, igstRate);
 
   // ═══════════════════════════════════════════════════════════════════
   // 1. HEADER  (y ≈ 23–44mm, verified from reference)
@@ -265,7 +269,7 @@ export function generateInvoicePDF(invoice, company) {
   
   // --- IGST Text ---
   const igstY = y + tcHeight - GRAND_H;
-  tC(doc, `IGST-${(company.igstRate * 100).toFixed(2)}%`, X_RATE, C_RATE, igstY - 1.5, 8.4, true);
+  tC(doc, `IGST-${(igstRate * 100).toFixed(2)}%`, X_RATE, C_RATE, igstY - 1.5, 8.4, true);
   tR(doc, formatIndianNumber(igstAmount), X_AMT, C_AMT, igstY - 1.5, 8.4);
   
   // --- GRAND TOTAL Text ---

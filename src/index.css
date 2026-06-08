@@ -1144,8 +1144,10 @@
       grid-template-columns: 1fr 1fr;
       gap: 16px;
     }
-    .desktop-grid .section-card {
-      margin-bottom: 0;
+    .desktop-grid .section-card,
+    .desktop-grid .party-card,
+    .desktop-grid .invoice-card {
+      margin-bottom: 0 !important;
     }
 
     /* Desktop Layout & Sidebar */
