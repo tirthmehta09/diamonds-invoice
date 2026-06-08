@@ -54,6 +54,50 @@
     overflow-x: hidden;
   }
 
+  /* On larger screens (tablet / laptop), expand the shell */
+  @media (min-width: 640px) {
+    .app-shell {
+      max-width: 680px;
+      box-shadow: 0 0 80px rgba(0,0,0,0.08);
+    }
+
+    /* Wider bottom nav */
+    .bottom-nav, .totals-bar {
+      max-width: 680px;
+    }
+
+    /* Show modals as centered dialogs instead of bottom-sheets */
+    .modal-overlay {
+      align-items: center;
+    }
+    .modal-sheet {
+      max-width: 520px;
+      border-radius: 20px;
+      max-height: 90dvh;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .app-shell {
+      max-width: 900px;
+    }
+    .bottom-nav, .totals-bar {
+      max-width: 900px;
+    }
+    .modal-sheet {
+      max-width: 560px;
+    }
+    /* Two column layout for section cards on desktop */
+    .desktop-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .desktop-grid .section-card {
+      margin-bottom: 0;
+    }
+  }
+
   /* ── Top Bar ───────────────────────────────────────────────────────────── */
   .top-bar {
     position: sticky;

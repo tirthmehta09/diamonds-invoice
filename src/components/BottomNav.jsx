@@ -42,7 +42,7 @@ export default function BottomNav() {
       </NavLink>
       <NavLink to="/storage" className={({ isActive }) => `bottom-nav-item${isActive ? ' active' : ''}`}>
         <StorageIcon />
-        Storage
+        Files
       </NavLink>
     </nav>
   );

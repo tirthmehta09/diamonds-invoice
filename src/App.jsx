@@ -11,6 +11,34 @@ import Login from './pages/Login.jsx';
 import { ToastProvider } from './components/Toast.jsx';
 import { getSupabaseClient } from './utils/supabaseClient';
 
+// ── Device fingerprinting ────────────────────────────────────────────────────
+function getDeviceFingerprint() {
+  const nav = window.navigator;
+  const screen = window.screen;
+  const parts = [
+    nav.userAgent,
+    nav.language,
+    screen.colorDepth,
+    screen.width + 'x' + screen.height,
+    new Date().getTimezoneOffset(),
+    !!nav.cookieEnabled,
+    !!window.sessionStorage,
+    nav.hardwareConcurrency || 0,
+    nav.platform || '',
+  ];
+  // Simple hash
+  const str = parts.join('|');
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+const DEVICE_FP_KEY = 'diamond_device_fp';
+
 export default function App() {
   const location = useLocation();
   const [session, setSession] = useState(null);
@@ -26,12 +54,38 @@ export default function App() {
 
     // Get current session
     client.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        // Check device fingerprint
+        const currentFp = getDeviceFingerprint();
+        const storedFp = localStorage.getItem(DEVICE_FP_KEY);
+        if (storedFp && storedFp !== currentFp) {
+          // Different device — force logout
+          client.auth.signOut().then(() => {
+            localStorage.removeItem(DEVICE_FP_KEY);
+            localStorage.removeItem('session_start_time');
+            setSession(null);
+            setLoading(false);
+            alert('You have been logged out because a new device was detected. Please log in again.');
+          });
+          return;
+        }
+        // Store fingerprint on first login from this device
+        if (!storedFp) {
+          localStorage.setItem(DEVICE_FP_KEY, currentFp);
+        }
+      }
       setSession(session);
       setLoading(false);
     });
 
     // Listen for auth state changes
     const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+      if (session && !localStorage.getItem(DEVICE_FP_KEY)) {
+        localStorage.setItem(DEVICE_FP_KEY, getDeviceFingerprint());
+      }
+      if (!session) {
+        localStorage.removeItem(DEVICE_FP_KEY);
+      }
       setSession(session);
     });
 
