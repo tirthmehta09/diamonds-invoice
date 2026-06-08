@@ -5,11 +5,12 @@ import Home from './pages/Home.jsx';
 import CreateInvoice from './pages/CreateInvoice.jsx';
 import InvoiceHistory from './pages/InvoiceHistory.jsx';
 import Parties from './pages/Parties.jsx';
+import Storage from './pages/Storage.jsx';
 import { ToastProvider } from './components/Toast.jsx';
 
 export default function App() {
   const location = useLocation();
-  const hideNav = location.pathname.startsWith('/invoice/create');
+  const hideNav = location.pathname.startsWith('/invoice/create') || location.pathname.startsWith('/invoice/edit');
 
   return (
     <ToastProvider>
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/invoice/edit/:invoiceId" element={<CreateInvoice />} />
           <Route path="/history" element={<InvoiceHistory />} />
           <Route path="/parties" element={<Parties />} />
+          <Route path="/storage" element={<Storage />} />
         </Routes>
         {!hideNav && <BottomNav />}
       </div>

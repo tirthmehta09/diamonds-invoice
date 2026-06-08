@@ -44,6 +44,12 @@ export default function CreateInvoice() {
   const [savedInvoiceId] = useState(invoiceId || generateId());
   const [errors, setErrors] = useState({});
 
+  // ── filename prompt state ──────────────────────────────────────────────
+  const [showFilenameModal, setShowFilenameModal] = useState(false);
+  const [namingAction, setNamingAction] = useState(null); // 'share' | 'download'
+  const [customFilename, setCustomFilename] = useState('');
+  const [filenameError, setFilenameError] = useState('');
+
   useEffect(() => {
     if (company && !invoiceId) {
       setInvoiceNo(getNextInvoiceNumber(company.id));
@@ -209,40 +215,81 @@ export default function CreateInvoice() {
     }
   };
 
-  // ── actions ───────────────────────────────────────────────────────────────
-  const handleShare = async () => {
-    if (!validate()) return;
-    setGenerating(true);
-    try {
-      const invoice = buildInvoice();
-      await saveInvoice(invoice);
-      confirmInvoiceNumber(company.id);
-      await shareInvoicePDF(invoice, company);
-      showToast('Invoice shared!', 'success');
-      await checkAndPromptPartySave();
-    } catch (err) {
-      console.error(err);
-      showToast('Error sharing PDF', 'error');
-    } finally {
-      setGenerating(false);
+  // ── filename helpers ─────────────────────────────────────────────────────
+  const getSuggestedFilename = () => {
+    const serialMatch = invoiceNo.match(/^(\d+)/);
+    const yearMatch = invoiceNo.match(/(\d{4}-\d{2})/);
+    const serial = serialMatch ? serialMatch[1].padStart(2, '0') : '01';
+    const year = yearMatch ? yearMatch[1] : '2026-27';
+    const cleanedBuyer = buyerName
+      .toUpperCase()
+      .replace(/[^A-Z0-9\s_-]/g, '')
+      .trim();
+    return `${serial}-${cleanedBuyer}-${year}`;
+  };
+
+  const handleFilenameChange = (value) => {
+    const val = value.toUpperCase();
+    setCustomFilename(val);
+
+    const regex = /^\d{2,}-[A-Z0-9_\s-]+-\d{4}-\d{2}$/;
+    if (!val.trim()) {
+      setFilenameError('Filename is required');
+    } else if (!regex.test(val)) {
+      setFilenameError('Must be: [Serial]-[Buyer Name]-[Financial Year]\ne.g. 03-OM-2025-26');
+    } else {
+      setFilenameError('');
     }
   };
 
-  const handleGeneratePDF = async () => {
+  // ── actions ───────────────────────────────────────────────────────────────
+  const handleShareClick = () => {
     if (!validate()) return;
+    const suggested = getSuggestedFilename();
+    setCustomFilename(suggested);
+    setFilenameError('');
+    setNamingAction('share');
+    setShowFilenameModal(true);
+  };
+
+  const handleDownloadClick = () => {
+    if (!validate()) return;
+    const suggested = getSuggestedFilename();
+    setCustomFilename(suggested);
+    setFilenameError('');
+    setNamingAction('download');
+    setShowFilenameModal(true);
+  };
+
+  const confirmAndSaveInvoice = async () => {
+    const regex = /^\d{2,}-[A-Z0-9_\s-]+-\d{4}-\d{2}$/;
+    if (!regex.test(customFilename)) {
+      setFilenameError('Filename must match the required format');
+      return;
+    }
+
     setGenerating(true);
+    setShowFilenameModal(false);
     try {
       const invoice = buildInvoice();
+      invoice.filename = customFilename;
       await saveInvoice(invoice);
       confirmInvoiceNumber(company.id);
-      downloadInvoicePDF(invoice, company);
-      showToast('PDF downloaded!', 'success');
+
+      if (namingAction === 'share') {
+        await shareInvoicePDF(invoice, company, customFilename);
+        showToast('Invoice shared!', 'success');
+      } else {
+        downloadInvoicePDF(invoice, company, customFilename);
+        showToast('PDF downloaded!', 'success');
+      }
       await checkAndPromptPartySave();
     } catch (err) {
       console.error(err);
-      showToast('Error generating PDF', 'error');
+      showToast(`Error ${namingAction === 'share' ? 'sharing' : 'downloading'} PDF`, 'error');
     } finally {
       setGenerating(false);
+      setNamingAction(null);
     }
   };
 
@@ -547,13 +594,13 @@ export default function CreateInvoice() {
 
         {/* ── Action Buttons ─────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <button className="btn-primary" onClick={handleShare} disabled={generating}>
+          <button className="btn-primary" onClick={handleShareClick} disabled={generating}>
             {generating ? <span className="spinner" /> : '💬 Share PDF (WhatsApp)'}
           </button>
           <button
             className="btn-secondary"
             style={{ width: '100%' }}
-            onClick={handleGeneratePDF}
+            onClick={handleDownloadClick}
             disabled={generating}
           >
             {generating ? <span className="spinner dark" /> : '📥 Download PDF'}
@@ -587,6 +634,90 @@ export default function CreateInvoice() {
           onSelect={handlePartySelect}
           onClose={() => setShowPartySearch(false)}
         />
+      )}
+
+      {/* ── Filename Modal ─────────────────────────────────────────────────── */}
+      {showFilenameModal && (
+        <div className="modal-overlay" onClick={() => setShowFilenameModal(false)}>
+          <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-handle" />
+            <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: '#0f172a' }}>
+              Confirm PDF Filename
+            </h2>
+            <p style={{ fontSize: 13, color: '#475569', marginBottom: 14 }}>
+              Enter the filename for this invoice. It must follow the exact format below:
+            </p>
+            
+            <div style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              padding: '10px 12px',
+              borderRadius: 8,
+              marginBottom: 16,
+              fontSize: 12.5,
+              color: '#334155',
+              lineHeight: 1.5
+            }}>
+              <div>
+                <strong style={{ color: '#6366f1' }}>Format: </strong>
+                <code style={{ background: '#e2e8f0', padding: '2px 4px', borderRadius: 4, fontFamily: 'monospace' }}>
+                  [Serial]-[BuyerName]-[FinancialYear]
+                </code>
+              </div>
+              <div style={{ marginTop: 6 }}>
+                <strong style={{ color: '#6366f1' }}>Example: </strong>
+                <code style={{ background: '#e2e8f0', padding: '2px 4px', borderRadius: 4, fontFamily: 'monospace', color: '#0f172a' }}>
+                  03-OM-2025-26
+                </code>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 18 }}>
+              <label className="field-label" style={{ color: '#475569', marginBottom: 6 }}>Filename {REQ}</label>
+              <input
+                className="field-input"
+                value={customFilename}
+                onChange={(ev) => handleFilenameChange(ev.target.value)}
+                placeholder="e.g. 03-OM-2025-26"
+                autoFocus
+                style={{
+                  fontFamily: 'monospace',
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                  borderColor: filenameError ? '#ef4444' : '#cbd5e1',
+                  boxShadow: filenameError ? '0 0 0 3px rgba(239,68,68,0.12)' : 'none'
+                }}
+              />
+              {filenameError && (
+                <div style={{ color: '#ef4444', fontSize: 11, marginTop: 5, whiteSpace: 'pre-line', fontWeight: 500 }}>
+                  {filenameError}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                className="btn-secondary"
+                style={{ flex: 1, minHeight: 44 }}
+                onClick={() => setShowFilenameModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-primary"
+                style={{
+                  flex: 2,
+                  minHeight: 44,
+                  background: filenameError || !customFilename.trim() ? '#94a3b8' : accentColor
+                }}
+                disabled={!!filenameError || !customFilename.trim()}
+                onClick={confirmAndSaveInvoice}
+              >
+                {generating ? <span className="spinner" /> : 'Save & Continue'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

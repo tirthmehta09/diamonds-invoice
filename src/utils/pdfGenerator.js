@@ -361,23 +361,36 @@ export function generateInvoicePDF(invoice, company) {
 }
 
 // ── Download ──────────────────────────────────────────────────────────────────
-export function downloadInvoicePDF(invoice, company) {
+export function downloadInvoicePDF(invoice, company, customFilename) {
   const blob = generateInvoicePDF(invoice, company);
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  const no    = (invoice.invoiceNo || 'INV').replace(/\//g, '-');
-  const buyer = (invoice.buyer?.name || 'buyer').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20);
-  a.download  = `${no}-${buyer}.pdf`;
+  
+  if (customFilename) {
+    a.download = customFilename.endsWith('.pdf') ? customFilename : `${customFilename}.pdf`;
+  } else {
+    const no    = (invoice.invoiceNo || 'INV').replace(/\//g, '-');
+    const buyer = (invoice.buyer?.name || 'buyer').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20);
+    a.download  = `${no}-${buyer}.pdf`;
+  }
+  
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
 // ── Share (Web Share API → fallback open in tab) ───────────────────────────────
-export async function shareInvoicePDF(invoice, company) {
+export async function shareInvoicePDF(invoice, company, customFilename) {
   const blob     = generateInvoicePDF(invoice, company);
-  const no       = (invoice.invoiceNo || 'INV').replace(/\//g, '-');
-  const fileName = `Invoice-${no}.pdf`;
+  let fileName = '';
+  
+  if (customFilename) {
+    fileName = customFilename.endsWith('.pdf') ? customFilename : `${customFilename}.pdf`;
+  } else {
+    const no       = (invoice.invoiceNo || 'INV').replace(/\//g, '-');
+    fileName = `Invoice-${no}.pdf`;
+  }
+  
   const file     = new File([blob], fileName, { type: 'application/pdf' });
 
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -385,7 +398,7 @@ export async function shareInvoicePDF(invoice, company) {
       await navigator.share({ files: [file], title: `Invoice ${invoice.invoiceNo}` });
       return true;
     } catch (err) {
-      if (err.name !== 'AbortError') downloadInvoicePDF(invoice, company);
+      if (err.name !== 'AbortError') downloadInvoicePDF(invoice, company, customFilename);
       return false;
     }
   } else {
