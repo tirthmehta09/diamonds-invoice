@@ -9,21 +9,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const showToast = useToast();
 
-  // Helper to map usernames or phone numbers to Supabase-required email format
-  const getEmailFromIdentifier = (val) => {
-    const cleaned = val.trim().toLowerCase();
-    if (cleaned.includes('@')) {
-      return cleaned;
-    }
-    // Remove all spaces for usernames, e.g. "Tirth Mehta" -> "tirthmehta"
-    const username = cleaned.replace(/\s+/g, '');
-    return `${username}@family.com`;
-  };
-
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!identifier.trim()) {
-      showToast('Please enter your name, phone, or email', 'error');
+      showToast('Please enter your phone number or email', 'error');
       return;
     }
     if (!password.trim()) {
@@ -37,22 +26,36 @@ export default function Login() {
       return;
     }
 
-    setLoading(false);
     setLoading(true);
-
-    const email = getEmailFromIdentifier(identifier);
+    const input = identifier.trim();
 
     try {
-      const { error } = await client.auth.signInWithPassword({
-        email,
-        password: password.trim(),
-      });
+      let authParams = {};
+      if (input.includes('@')) {
+        authParams = { email: input.toLowerCase(), password: password.trim() };
+      } else {
+        // Clean up the phone number input
+        let cleaned = input.replace(/[^0-9+]/g, '');
+        // Default to India country code (+91) if no country code is specified
+        if (!cleaned.startsWith('+')) {
+          if (cleaned.length === 10) {
+            cleaned = `+91${cleaned}`;
+          } else if (cleaned.length === 12 && cleaned.startsWith('91')) {
+            cleaned = `+${cleaned}`;
+          } else {
+            cleaned = `+91${cleaned}`;
+          }
+        }
+        authParams = { phone: cleaned, password: password.trim() };
+      }
+
+      const { error } = await client.auth.signInWithPassword(authParams);
 
       if (error) throw error;
       showToast('Logged in successfully!', 'success');
     } catch (err) {
       console.error(err);
-      showToast(err.message || 'Login failed. Check your password.', 'error');
+      showToast(err.message || 'Login failed. Check your credentials.', 'error');
     } finally {
       setLoading(false);
     }
@@ -106,13 +109,13 @@ export default function Login() {
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <label className="field-label" style={{ color: '#475569', marginBottom: 5 }}>
-              Username, Phone, or Email
+              Phone Number or Email
             </label>
             <input
               className="field-input"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="e.g. Tirth Mehta or 9819185864"
+              placeholder="e.g. 9819185864 or tirth@mehta.com"
               autoFocus
               style={{ fontSize: 15 }}
             />
@@ -163,7 +166,7 @@ export default function Login() {
           color: '#64748b',
           lineHeight: 1.5
         }}>
-          💡 <strong style={{ color: '#475569' }}>Family Admin Note:</strong> If your username contains spaces (like "Tirth Mehta"), the system will automatically log you in using the email format <code style={{ fontFamily: 'monospace' }}>tirthmehta@family.com</code>.
+          💡 <strong style={{ color: '#475569' }}>Family Login Note:</strong> You can sign in using your 10-digit Phone Number (e.g., <code style={{ fontFamily: 'monospace' }}>9819185864</code>) or your registered Email, along with your password.
         </div>
       </div>
     </div>
