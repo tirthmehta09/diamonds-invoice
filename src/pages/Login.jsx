@@ -36,7 +36,7 @@ export default function Login() {
       } else {
         // Clean up phone number input and map to a virtual email
         const cleaned = input.replace(/[^0-9]/g, ''); // Keep only digits
-        emailAddress = `${cleaned}@family.com`;
+        emailAddress = `${cleaned}@jayjas.com`;
       }
 
       const { error } = await client.auth.signInWithPassword({
