@@ -514,19 +514,35 @@ export default function Storage() {
     );
   };
 
+  const handleLogout = async () => {
+    const client = getSupabaseClient();
+    if (client) {
+      await client.auth.signOut();
+    }
+  };
+
   return (
     <>
       {/* ── Top Bar ────────────────────────────────────────────────────────── */}
       <div className="top-bar">
         <h1 style={{ fontSize: 17, fontWeight: 700 }}>Supabase Storage</h1>
-        <button
-          className={`btn-secondary${showConfig ? ' active' : ''}`}
-          style={{ padding: '8px 10px', minHeight: 36, display: 'flex', alignItems: 'center', gap: 4 }}
-          onClick={() => setShowConfig(!showConfig)}
-        >
-          <SettingsIcon />
-          Settings
-        </button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            className={`btn-secondary${showConfig ? ' active' : ''}`}
+            style={{ padding: '8px 10px', minHeight: 36, display: 'flex', alignItems: 'center', gap: 4 }}
+            onClick={() => setShowConfig(!showConfig)}
+          >
+            <SettingsIcon />
+            Settings
+          </button>
+          <button
+            className="btn-secondary"
+            style={{ padding: '8px 10px', minHeight: 36, display: 'flex', alignItems: 'center', gap: 4, border: '1px solid #cbd5e1' }}
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       <div className="page-content" style={{ paddingBottom: 160 }}>

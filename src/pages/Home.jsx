@@ -1,6 +1,7 @@
 // src/pages/Home.jsx
 import { useNavigate } from 'react-router-dom';
 import { COMPANIES } from '../config/companies';
+import { getSupabaseClient } from '../utils/supabaseClient';
 
 const RealisticDiamond = ({ color = 'blue', size = 24 }) => {
   const palettes = {
@@ -27,6 +28,13 @@ const RealisticDiamond = ({ color = 'blue', size = 24 }) => {
 export default function Home() {
   const navigate = useNavigate();
 
+  const handleLogout = async () => {
+    const client = getSupabaseClient();
+    if (client) {
+      await client.auth.signOut();
+    }
+  };
+
   return (
     <>
       {/* Top Bar */}
@@ -38,6 +46,13 @@ export default function Home() {
             GST Billing App
           </p>
         </div>
+        <button
+          className="btn-secondary"
+          style={{ padding: '6px 10px', minHeight: 32, fontSize: 12, border: '1px solid #cbd5e1' }}
+          onClick={handleLogout}
+        >
+          Logout
+        </button>
       </div>
 
       <div className="page-content">
