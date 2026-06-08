@@ -526,88 +526,16 @@ export default function Storage() {
       {/* ── Top Bar ────────────────────────────────────────────────────────── */}
       <div className="top-bar">
         <h1 style={{ fontSize: 17, fontWeight: 700 }}>Supabase Storage</h1>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button
-            className={`btn-secondary${showConfig ? ' active' : ''}`}
-            style={{ padding: '8px 10px', minHeight: 36, display: 'flex', alignItems: 'center', gap: 4 }}
-            onClick={() => setShowConfig(!showConfig)}
-          >
-            <SettingsIcon />
-            Settings
-          </button>
-          <button
-            className="btn-secondary"
-            style={{ padding: '8px 10px', minHeight: 36, display: 'flex', alignItems: 'center', gap: 4, border: '1px solid #cbd5e1' }}
-            onClick={handleLogout}
-          >
-            Logout
-          </button>
-        </div>
+        <button
+          className="btn-secondary"
+          style={{ padding: '8px 10px', minHeight: 36, display: 'flex', alignItems: 'center', gap: 4, border: '1px solid #cbd5e1' }}
+          onClick={handleLogout}
+        >
+          Logout
+        </button>
       </div>
 
       <div className="page-content" style={{ paddingBottom: 160 }}>
-        {/* ── SECTION 1: Credentials configuration ───────────────────────── */}
-        {showConfig && (
-          <div className="section-card" style={{ border: '1px solid #cbd5e1', background: '#f8fafc' }}>
-            <div className="section-title">⚙️ Supabase Settings</div>
-            <p style={{ fontSize: 12, color: '#64748b', marginBottom: 12, marginTop: -4 }}>
-              Setup your free Supabase project details below to enable directory structures, files uploads, and PDF merges.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div>
-                <label className="field-label">Project URL</label>
-                <input
-                  className="field-input"
-                  value={config.url}
-                  onChange={(e) => setConfig({ ...config, url: e.target.value })}
-                  placeholder="https://your-project.supabase.co"
-                />
-              </div>
-              <div>
-                <label className="field-label">Anon Key (API Key)</label>
-                <input
-                  className="field-input"
-                  type="password"
-                  value={config.key}
-                  onChange={(e) => setConfig({ ...config, key: e.target.value })}
-                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                />
-              </div>
-              <div>
-                <label className="field-label">Storage Bucket Name</label>
-                <input
-                  className="field-input"
-                  value={config.bucket}
-                  onChange={(e) => setConfig({ ...config, bucket: e.target.value })}
-                  placeholder="invoices"
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                <button
-                  className="btn-primary"
-                  style={{ flex: 1 }}
-                  onClick={handleTestConnection}
-                  disabled={testStatus === 'loading'}
-                >
-                  {testStatus === 'loading' ? <span className="spinner" /> : '🔌 Test & Save'}
-                </button>
-                {testStatus === 'success' && (
-                  <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 600 }}>
-                    ✓ Connected
-                  </span>
-                )}
-                {testStatus === 'error' && (
-                  <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 600 }}>
-                    ✗ Failed
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ── SECTION 2: Navigation Breadcrumbs ──────────────────────────── */}
         {isConfigured && (
           <div className="section-card" style={{ marginBottom: 10, padding: '12px 14px' }}>
