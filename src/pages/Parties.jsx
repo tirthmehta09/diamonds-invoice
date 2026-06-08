@@ -220,46 +220,48 @@ export default function Parties() {
           </div>
         )}
 
-        {filtered.map((party) => (
-          <div key={party.id}>
-            {editing === party.id ? (
-              <div className="section-card" style={{ borderColor: '#4f46e5', borderWidth: 1.5 }}>
-                <div className="section-title">✏️ Edit Party</div>
-                <PartyForm party={party} onSave={handleSave} onCancel={() => setEditing(null)} />
-              </div>
-            ) : (
-              <div className="party-card">
-                <div className="party-card-header">
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="party-name">{party.name}</div>
-                    {party.gstin && <div className="party-gstin">GSTIN: {party.gstin}</div>}
-                    {party.addressLines?.length > 0 && (
-                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 6, lineHeight: 1.4, fontWeight: 500 }}>
-                        {party.addressLines.join(', ')}
-                      </div>
-                    )}
+        <div className="desktop-grid">
+          {filtered.map((party) => (
+            <div key={party.id}>
+              {editing === party.id ? (
+                <div className="section-card" style={{ borderColor: '#4f46e5', borderWidth: 1.5, margin: 0 }}>
+                  <div className="section-title">✏️ Edit Party</div>
+                  <PartyForm party={party} onSave={handleSave} onCancel={() => setEditing(null)} />
+                </div>
+              ) : (
+                <div className="party-card" style={{ margin: 0 }}>
+                  <div className="party-card-header">
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="party-name">{party.name}</div>
+                      {party.gstin && <div className="party-gstin">GSTIN: {party.gstin}</div>}
+                      {party.addressLines?.length > 0 && (
+                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 6, lineHeight: 1.4, fontWeight: 500 }}>
+                          {party.addressLines.join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 12 }}>
+                    <button
+                      className="btn-secondary"
+                      style={{ fontSize: 13, padding: '9px 12px', minHeight: 38 }}
+                      onClick={() => setEditing(party.id)}
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      className="btn-secondary btn-danger"
+                      style={{ padding: '9px 14px', minHeight: 38, fontSize: 13 }}
+                      onClick={() => handleDelete(party.id)}
+                    >
+                      🗑️ Delete
+                    </button>
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 12 }}>
-                  <button
-                    className="btn-secondary"
-                    style={{ fontSize: 13, padding: '9px 12px', minHeight: 38 }}
-                    onClick={() => setEditing(party.id)}
-                  >
-                    ✏️ Edit
-                  </button>
-                  <button
-                    className="btn-secondary btn-danger"
-                    style={{ padding: '9px 14px', minHeight: 38, fontSize: 13 }}
-                    onClick={() => handleDelete(party.id)}
-                  >
-                    🗑️ Delete
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </>
   );

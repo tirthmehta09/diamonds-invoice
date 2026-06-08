@@ -7,7 +7,8 @@ import { amountInWords } from '../utils/amountInWords';
 import { todayISO } from '../utils/dateHelpers';
 import { getNextInvoiceNumber, confirmInvoiceNumber } from '../utils/invoiceNumber';
 import { saveInvoice, generateId, getAllParties, saveParty } from '../utils/storage';
-import { downloadInvoicePDF, shareInvoicePDF } from '../utils/pdfGenerator';
+import { downloadInvoicePDF, shareInvoicePDF, generateInvoicePDF } from '../utils/pdfGenerator';
+import { getSupabaseClient, getSupabaseConfig } from '../utils/supabaseClient';
 import { useToast } from '../components/Toast.jsx';
 import PartySearchModal from '../components/PartySearchModal.jsx';
 
@@ -49,6 +50,39 @@ export default function CreateInvoice() {
   const [namingAction, setNamingAction] = useState(null); // 'share' | 'download'
   const [customFilename, setCustomFilename] = useState('');
   const [filenameError, setFilenameError] = useState('');
+
+  // ── destination folder selection state ──────────────────────────────
+  const [folders, setFolders] = useState(['ALL BILLS']);
+  const [selectedFolder, setSelectedFolder] = useState('ALL BILLS');
+  const [newFolderName, setNewFolderName] = useState('');
+  const [showNewFolderInput, setShowNewFolderInput] = useState(false);
+  const [loadingFolders, setLoadingFolders] = useState(false);
+
+  const fetchFolders = async () => {
+    const client = getSupabaseClient();
+    if (!client) return;
+    setLoadingFolders(true);
+    try {
+      const config = getSupabaseConfig();
+      const { data, error } = await client.storage
+        .from(config.bucket)
+        .list('', { limit: 100 });
+      if (error) throw error;
+
+      const fetchedFolders = (data || [])
+        .filter(item => !item.id && !item.metadata && item.name !== '.keep')
+        .map(item => item.name);
+
+      if (!fetchedFolders.includes('ALL BILLS')) {
+        fetchedFolders.unshift('ALL BILLS');
+      }
+      setFolders(fetchedFolders);
+    } catch (err) {
+      console.error('Error fetching folders:', err);
+    } finally {
+      setLoadingFolders(false);
+    }
+  };
 
   useEffect(() => {
     if (company && !invoiceId) {
@@ -250,6 +284,7 @@ export default function CreateInvoice() {
     setFilenameError('');
     setNamingAction('share');
     setShowFilenameModal(true);
+    fetchFolders();
   };
 
   const handleDownloadClick = () => {
@@ -259,6 +294,7 @@ export default function CreateInvoice() {
     setFilenameError('');
     setNamingAction('download');
     setShowFilenameModal(true);
+    fetchFolders();
   };
 
   const confirmAndSaveInvoice = async () => {
@@ -268,6 +304,17 @@ export default function CreateInvoice() {
       return;
     }
 
+    // Determine the destination folder path
+    let folderToSave = selectedFolder;
+    if (selectedFolder === '__new__') {
+      const cleanNew = newFolderName.trim().replace(/[^a-zA-Z0-9_\s-]/g, '').toUpperCase();
+      if (!cleanNew) {
+        showToast('Invalid folder name', 'error');
+        return;
+      }
+      folderToSave = cleanNew;
+    }
+
     setGenerating(true);
     setShowFilenameModal(false);
     try {
@@ -275,6 +322,30 @@ export default function CreateInvoice() {
       invoice.filename = customFilename;
       await saveInvoice(invoice);
       confirmInvoiceNumber(company.id);
+
+      // Generate the PDF blob and upload to Supabase Storage
+      try {
+        const pdfBlob = generateInvoicePDF(invoice, company);
+        const client = getSupabaseClient();
+        if (client) {
+          const { bucket } = getSupabaseConfig();
+          const cleanFilename = customFilename.endsWith('.pdf') ? customFilename : `${customFilename}.pdf`;
+          
+          const destPath = folderToSave && folderToSave !== '__root__' 
+            ? `${folderToSave}/${cleanFilename}` 
+            : cleanFilename;
+            
+          const fileObj = new File([pdfBlob], cleanFilename, { type: 'application/pdf' });
+
+          await client.storage
+            .from(bucket)
+            .upload(destPath, fileObj, { upsert: true });
+            
+          console.log(`Generated PDF uploaded to ${destPath} successfully!`);
+        }
+      } catch (uploadErr) {
+        console.error('Failed to auto-upload generated invoice PDF:', uploadErr);
+      }
 
       if (namingAction === 'share') {
         await shareInvoicePDF(invoice, company, customFilename);
@@ -290,6 +361,10 @@ export default function CreateInvoice() {
     } finally {
       setGenerating(false);
       setNamingAction(null);
+      // Reset folder selection states
+      setNewFolderName('');
+      setShowNewFolderInput(false);
+      setSelectedFolder('ALL BILLS');
     }
   };
 
@@ -333,155 +408,157 @@ export default function CreateInvoice() {
 
       <div className="page-content" style={{ paddingBottom: 150 }}>
 
-        {/* ── SECTION 1: Invoice Details ─────────────────────────────────── */}
-        <div className="section-card">
-          <div className="section-title">📋 Invoice Details</div>
+        <div className="desktop-grid" style={{ marginBottom: 16 }}>
+          {/* ── SECTION 1: Invoice Details ─────────────────────────────────── */}
+          <div className="section-card" style={{ margin: 0 }}>
+            <div className="section-title">📋 Invoice Details</div>
 
-          <div style={{ marginBottom: 10 }}>
-            <label className="field-label">Invoice Number {REQ}</label>
-            <input
-              className="field-input"
-              value={invoiceNo}
-              onChange={(ev) => { setInvoiceNo(ev.target.value); setErrors(p => ({ ...p, invoiceNo: false })); }}
-              placeholder="03/2026-27"
-              style={eb('invoiceNo')}
-            />
+            <div style={{ marginBottom: 10 }}>
+              <label className="field-label">Invoice Number {REQ}</label>
+              <input
+                className="field-input"
+                value={invoiceNo}
+                onChange={(ev) => { setInvoiceNo(ev.target.value); setErrors(p => ({ ...p, invoiceNo: false })); }}
+                placeholder="03/2026-27"
+                style={eb('invoiceNo')}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <label className="field-label">Invoice Date {REQ}</label>
+                <input
+                  className="field-input"
+                  type="date"
+                  value={invoiceDate}
+                  onChange={(ev) => { setInvoiceDate(ev.target.value); setErrors(p => ({ ...p, invoiceDate: false })); }}
+                  style={eb('invoiceDate')}
+                />
+              </div>
+              <div>
+                <label className="field-label">Dispatch Date {REQ}</label>
+                <input
+                  className="field-input"
+                  type="date"
+                  value={dispatchDate}
+                  onChange={(ev) => { setDispatchDate(ev.target.value); setErrors(p => ({ ...p, dispatchDate: false })); }}
+                  style={eb('dispatchDate')}
+                />
+              </div>
+              <div>
+                <label className="field-label">Dispatch Mode {REQ}</label>
+                <select
+                  className="field-input"
+                  value={dispatchMode}
+                  onChange={(ev) => { setDispatchMode(ev.target.value); setErrors(p => ({ ...p, dispatchMode: false })); }}
+                  style={eb('dispatchMode')}
+                >
+                  {DISPATCH_MODES.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="field-label">Terms {REQ}</label>
+                <input
+                  className="field-input"
+                  value={terms}
+                  onChange={(ev) => { setTerms(ev.target.value); setErrors(p => ({ ...p, terms: false })); }}
+                  placeholder="COD"
+                  style={eb('terms')}
+                />
+              </div>
+              <div>
+                <label className="field-label">HSN Code {REQ}</label>
+                <input
+                  className="field-input"
+                  value={hsnCode}
+                  onChange={(ev) => { setHsnCode(ev.target.value); setErrors(p => ({ ...p, hsnCode: false })); }}
+                  placeholder={company.defaultHsnCode}
+                  style={eb('hsnCode')}
+                />
+              </div>
+              <div>
+                <label className="field-label">Delivery City {REQ}</label>
+                <select
+                  className="field-input"
+                  value={deliveryCity}
+                  onChange={(ev) => { setDeliveryCity(ev.target.value); setErrors(p => ({ ...p, deliveryCity: false })); }}
+                  style={eb('deliveryCity')}
+                >
+                  {DELIVERY_CITIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div>
-              <label className="field-label">Invoice Date {REQ}</label>
-              <input
-                className="field-input"
-                type="date"
-                value={invoiceDate}
-                onChange={(ev) => { setInvoiceDate(ev.target.value); setErrors(p => ({ ...p, invoiceDate: false })); }}
-                style={eb('invoiceDate')}
-              />
-            </div>
-            <div>
-              <label className="field-label">Dispatch Date {REQ}</label>
-              <input
-                className="field-input"
-                type="date"
-                value={dispatchDate}
-                onChange={(ev) => { setDispatchDate(ev.target.value); setErrors(p => ({ ...p, dispatchDate: false })); }}
-                style={eb('dispatchDate')}
-              />
-            </div>
-            <div>
-              <label className="field-label">Dispatch Mode {REQ}</label>
-              <select
-                className="field-input"
-                value={dispatchMode}
-                onChange={(ev) => { setDispatchMode(ev.target.value); setErrors(p => ({ ...p, dispatchMode: false })); }}
-                style={eb('dispatchMode')}
+          {/* ── SECTION 2: Buyer Details ───────────────────────────────────── */}
+          <div className="section-card" style={{ margin: 0 }}>
+            <div className="section-title">
+              👤 Buyer Details
+              <button
+                className="btn-secondary"
+                style={{ marginLeft: 'auto', padding: '5px 11px', minHeight: 30, fontSize: 11 }}
+                onClick={() => setShowPartySearch(true)}
               >
-                {DISPATCH_MODES.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
+                🔍 Search
+              </button>
             </div>
-            <div>
-              <label className="field-label">Terms {REQ}</label>
-              <input
-                className="field-input"
-                value={terms}
-                onChange={(ev) => { setTerms(ev.target.value); setErrors(p => ({ ...p, terms: false })); }}
-                placeholder="COD"
-                style={eb('terms')}
-              />
-            </div>
-            <div>
-              <label className="field-label">HSN Code {REQ}</label>
-              <input
-                className="field-input"
-                value={hsnCode}
-                onChange={(ev) => { setHsnCode(ev.target.value); setErrors(p => ({ ...p, hsnCode: false })); }}
-                placeholder={company.defaultHsnCode}
-                style={eb('hsnCode')}
-              />
-            </div>
-            <div>
-              <label className="field-label">Delivery City {REQ}</label>
-              <select
-                className="field-input"
-                value={deliveryCity}
-                onChange={(ev) => { setDeliveryCity(ev.target.value); setErrors(p => ({ ...p, deliveryCity: false })); }}
-                style={eb('deliveryCity')}
-              >
-                {DELIVERY_CITIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
 
-        {/* ── SECTION 2: Buyer Details ───────────────────────────────────── */}
-        <div className="section-card">
-          <div className="section-title">
-            👤 Buyer Details
-            <button
-              className="btn-secondary"
-              style={{ marginLeft: 'auto', padding: '5px 11px', minHeight: 30, fontSize: 11 }}
-              onClick={() => setShowPartySearch(true)}
-            >
-              🔍 Search
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div>
-              <label className="field-label">Buyer Name {REQ}</label>
-              <input
-                className="field-input"
-                value={buyerName}
-                onChange={(ev) => { setBuyerName(ev.target.value.toUpperCase()); setErrors(p => ({ ...p, buyerName: false })); }}
-                placeholder="M/S COMPANY NAME"
-                autoCapitalize="characters"
-                style={eb('buyerName')}
-              />
-            </div>
-            <div>
-              <label className="field-label">Address {REQ}</label>
-              <textarea
-                className="field-input"
-                rows={3}
-                value={buyerAddress}
-                onChange={(ev) => { setBuyerAddress(ev.target.value.toUpperCase()); setErrors(p => ({ ...p, buyerAddress: false })); }}
-                placeholder={'LINE 1\nLINE 2\nCITY - PINCODE'}
-                style={{ resize: 'none', lineHeight: 1.6, ...eb('buyerAddress') }}
-                autoCapitalize="characters"
-              />
-            </div>
-            <div>
-              <label className="field-label">
-                Buyer GSTIN {REQ}{' '}
-                {buyerGstin.length > 0 && (
-                  <span style={{ color: gstinValid ? '#10b981' : '#f87171', marginLeft: 4 }}>
-                    {gstinValid ? '✓ Valid' : '✗ Invalid'}
-                  </span>
-                )}
-              </label>
-              <input
-                className="field-input"
-                value={buyerGstin}
-                onChange={(ev) => {
-                  setBuyerGstin(ev.target.value.toUpperCase());
-                  setErrors(p => ({ ...p, buyerGstin: false, buyerGstinFormat: false }));
-                }}
-                placeholder="27XXXXX0000X1ZX"
-                maxLength={15}
-                autoCapitalize="characters"
-                style={{
-                  fontFamily: 'monospace',
-                  letterSpacing: '0.06em',
-                  ...(errors.buyerGstin || errors.buyerGstinFormat
-                    ? { borderColor: '#ef4444', boxShadow: '0 0 0 3px rgba(239,68,68,0.12)' }
-                    : {}),
-                }}
-              />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <label className="field-label">Buyer Name {REQ}</label>
+                <input
+                  className="field-input"
+                  value={buyerName}
+                  onChange={(ev) => { setBuyerName(ev.target.value.toUpperCase()); setErrors(p => ({ ...p, buyerName: false })); }}
+                  placeholder="M/S COMPANY NAME"
+                  autoCapitalize="characters"
+                  style={eb('buyerName')}
+                />
+              </div>
+              <div>
+                <label className="field-label">Address {REQ}</label>
+                <textarea
+                  className="field-input"
+                  rows={3}
+                  value={buyerAddress}
+                  onChange={(ev) => { setBuyerAddress(ev.target.value.toUpperCase()); setErrors(p => ({ ...p, buyerAddress: false })); }}
+                  placeholder={'LINE 1\nLINE 2\nCITY - PINCODE'}
+                  style={{ resize: 'none', lineHeight: 1.6, ...eb('buyerAddress') }}
+                  autoCapitalize="characters"
+                />
+              </div>
+              <div>
+                <label className="field-label">
+                  Buyer GSTIN {REQ}{' '}
+                  {buyerGstin.length > 0 && (
+                    <span style={{ color: gstinValid ? '#10b981' : '#f87171', marginLeft: 4 }}>
+                      {gstinValid ? '✓ Valid' : '✗ Invalid'}
+                    </span>
+                  )}
+                </label>
+                <input
+                  className="field-input"
+                  value={buyerGstin}
+                  onChange={(ev) => {
+                    setBuyerGstin(ev.target.value.toUpperCase());
+                    setErrors(p => ({ ...p, buyerGstin: false, buyerGstinFormat: false }));
+                  }}
+                  placeholder="27XXXXX0000X1ZX"
+                  maxLength={15}
+                  autoCapitalize="characters"
+                  style={{
+                    fontFamily: 'monospace',
+                    letterSpacing: '0.06em',
+                    ...(errors.buyerGstin || errors.buyerGstinFormat
+                      ? { borderColor: '#ef4444', boxShadow: '0 0 0 3px rgba(239,68,68,0.12)' }
+                      : {}),
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -695,6 +772,47 @@ export default function CreateInvoice() {
               )}
             </div>
 
+            <div style={{ marginBottom: 18 }}>
+              <label className="field-label" style={{ color: '#475569', marginBottom: 6 }}>Save Destination Folder</label>
+              {loadingFolders ? (
+                <div style={{ fontSize: 12.5, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6, minHeight: 40 }}>
+                  <span className="spinner dark" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                  <span>Loading cloud folders...</span>
+                </div>
+              ) : (
+                <select
+                  className="field-input"
+                  value={selectedFolder}
+                  onChange={(ev) => {
+                    setSelectedFolder(ev.target.value);
+                    setShowNewFolderInput(ev.target.value === '__new__');
+                  }}
+                  style={{ minHeight: 40 }}
+                >
+                  <option value="__root__">📁 Save to Root (No Folder)</option>
+                  {folders.map(f => (
+                    <option key={f} value={f}>📁 {f}</option>
+                  ))}
+                  <option value="__new__">➕ Create New Folder...</option>
+                </select>
+              )}
+            </div>
+
+            {showNewFolderInput && (
+              <div style={{ marginBottom: 18 }}>
+                <label className="field-label" style={{ color: '#475569', marginBottom: 6 }}>New Folder Name</label>
+                <input
+                  className="field-input"
+                  value={newFolderName}
+                  onChange={(ev) => setNewFolderName(ev.target.value)}
+                  placeholder="e.g. INVOICES_2026"
+                  style={{
+                    textTransform: 'uppercase',
+                  }}
+                />
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 className="btn-secondary"
@@ -708,9 +826,9 @@ export default function CreateInvoice() {
                 style={{
                   flex: 2,
                   minHeight: 44,
-                  background: filenameError || !customFilename.trim() ? '#94a3b8' : accentColor
+                  background: filenameError || !customFilename.trim() || (selectedFolder === '__new__' && !newFolderName.trim()) ? '#94a3b8' : accentColor
                 }}
-                disabled={!!filenameError || !customFilename.trim()}
+                disabled={!!filenameError || !customFilename.trim() || (selectedFolder === '__new__' && !newFolderName.trim())}
                 onClick={confirmAndSaveInvoice}
               >
                 {generating ? <span className="spinner" /> : 'Save & Continue'}

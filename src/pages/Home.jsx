@@ -109,37 +109,39 @@ export default function Home() {
         </p>
 
         {/* Company Cards */}
-        {Object.values(COMPANIES).map((company) => {
-          const isJas = company.id === 'jas_diamond';
-          return (
-            <button
-              key={company.id}
-              className={`company-card ${isJas ? 'jas' : 'jay'}`}
-              onClick={() => navigate(`/invoice/create/${company.id}`)}
-              style={{ width: '100%', textAlign: 'left' }}
-            >
-              <div className="company-card-icon">
-                <RealisticDiamond color={isJas ? 'blue' : 'purple'} size={44} />
-              </div>
-              <div className="company-card-info" style={{ flex: 1, minWidth: 0 }}>
-                <h2>{company.displayName}</h2>
-                <p>{company.address.line1}</p>
-                <p style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'monospace', marginTop: 2 }}>
-                  {company.gstin}
-                </p>
-              </div>
-              <svg
-                fill="none"
-                stroke="#cbd5e1"
-                viewBox="0 0 24 24"
-                strokeWidth={2.5}
-                style={{ width: 18, height: 18, flexShrink: 0 }}
+        <div className="desktop-grid">
+          {Object.values(COMPANIES).map((company) => {
+            const isJas = company.id === 'jas_diamond';
+            return (
+              <button
+                key={company.id}
+                className={`company-card ${isJas ? 'jas' : 'jay'}`}
+                onClick={() => navigate(`/invoice/create/${company.id}`)}
+                style={{ width: '100%', textAlign: 'left', margin: 0 }}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          );
-        })}
+                <div className="company-card-icon">
+                  <RealisticDiamond color={isJas ? 'blue' : 'purple'} size={44} />
+                </div>
+                <div className="company-card-info" style={{ flex: 1, minWidth: 0 }}>
+                  <h2>{company.displayName}</h2>
+                  <p>{company.address.line1}</p>
+                  <p style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'monospace', marginTop: 2 }}>
+                    {company.gstin}
+                  </p>
+                </div>
+                <svg
+                  fill="none"
+                  stroke="#cbd5e1"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2.5}
+                  style={{ width: 18, height: 18, flexShrink: 0 }}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            );
+          })}
+        </div>
 
 
       </div>

@@ -176,69 +176,71 @@ export default function InvoiceHistory() {
           </div>
         )}
 
-        {filtered.map((inv) => {
-          const company = COMPANIES[inv.company];
-          const isJas = inv.company === 'jas_diamond';
-          return (
-            <div className="invoice-card" key={inv.id}>
-              <div className="invoice-card-header">
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="invoice-no">{inv.invoiceNo}</div>
-                  <span
-                    className="badge"
-                    style={{
-                      background: isJas ? '#eff6ff' : '#faf5ff',
-                      color: isJas ? '#1d4ed8' : '#7e22ce',
-                      border: `1px solid ${isJas ? '#bfdbfe' : '#e9d5ff'}`,
-                      marginTop: 4,
-                    }}
+        <div className="desktop-grid">
+          {filtered.map((inv) => {
+            const company = COMPANIES[inv.company];
+            const isJas = inv.company === 'jas_diamond';
+            return (
+              <div className="invoice-card" key={inv.id} style={{ margin: 0 }}>
+                <div className="invoice-card-header">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="invoice-no">{inv.invoiceNo}</div>
+                    <span
+                      className="badge"
+                      style={{
+                        background: isJas ? '#eff6ff' : '#faf5ff',
+                        color: isJas ? '#1d4ed8' : '#7e22ce',
+                        border: `1px solid ${isJas ? '#bfdbfe' : '#e9d5ff'}`,
+                        marginTop: 4,
+                      }}
+                    >
+                      {company?.shortName || inv.company}
+                    </span>
+                  </div>
+                  <div className="invoice-amount">
+                    ₹{formatIndianNumber(inv.totals?.grandTotal || 0)}
+                  </div>
+                </div>
+
+                <div className="invoice-buyer">{inv.buyer?.name}</div>
+
+                <div className="invoice-meta">
+                  <span className="invoice-date">{formatDate(inv.invoiceDate)}</span>
+                  <span style={{ color: '#cbd5e1', fontSize: 12 }}>·</span>
+                  <span className="invoice-date">{formatIndianNumber(inv.totals?.totalCts || 0)} cts</span>
+                </div>
+
+                {/* Actions — 2×2 grid */}
+                <div className="invoice-actions">
+                  <button
+                    className="btn-secondary"
+                    onClick={() => handleDownload(inv)}
                   >
-                    {company?.shortName || inv.company}
-                  </span>
+                    📥 Download PDF
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => handleShare(inv)}
+                  >
+                    💬 Share
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => navigate(`/invoice/create/${inv.company}`)}
+                  >
+                    ✏️ New Invoice
+                  </button>
+                  <button
+                    className="btn-secondary btn-danger"
+                    onClick={() => handleDelete(inv.id)}
+                  >
+                    🗑️ Delete
+                  </button>
                 </div>
-                <div className="invoice-amount">
-                  ₹{formatIndianNumber(inv.totals?.grandTotal || 0)}
-                </div>
               </div>
-
-              <div className="invoice-buyer">{inv.buyer?.name}</div>
-
-              <div className="invoice-meta">
-                <span className="invoice-date">{formatDate(inv.invoiceDate)}</span>
-                <span style={{ color: '#cbd5e1', fontSize: 12 }}>·</span>
-                <span className="invoice-date">{formatIndianNumber(inv.totals?.totalCts || 0)} cts</span>
-              </div>
-
-              {/* Actions — 2×2 grid */}
-              <div className="invoice-actions">
-                <button
-                  className="btn-secondary"
-                  onClick={() => handleDownload(inv)}
-                >
-                  📥 Download PDF
-                </button>
-                <button
-                  className="btn-secondary"
-                  onClick={() => handleShare(inv)}
-                >
-                  💬 Share
-                </button>
-                <button
-                  className="btn-secondary"
-                  onClick={() => navigate(`/invoice/create/${inv.company}`)}
-                >
-                  ✏️ New Invoice
-                </button>
-                <button
-                  className="btn-secondary btn-danger"
-                  onClick={() => handleDelete(inv.id)}
-                >
-                  🗑️ Delete
-                </button>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </>
   );

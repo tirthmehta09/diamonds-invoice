@@ -8,6 +8,7 @@ import InvoiceHistory from './pages/InvoiceHistory.jsx';
 import Parties from './pages/Parties.jsx';
 import Storage from './pages/Storage.jsx';
 import Login from './pages/Login.jsx';
+import Sidebar from './components/Sidebar.jsx';
 import { ToastProvider } from './components/Toast.jsx';
 import { getSupabaseClient } from './utils/supabaseClient';
 
@@ -180,16 +181,21 @@ export default function App() {
 
   return (
     <ToastProvider>
-      <div className="app-shell">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/invoice/create/:companyId" element={<CreateInvoice />} />
-          <Route path="/invoice/edit/:invoiceId" element={<CreateInvoice />} />
-          <Route path="/history" element={<InvoiceHistory />} />
-          <Route path="/parties" element={<Parties />} />
-          <Route path="/storage" element={<Storage />} />
-        </Routes>
-        {!hideNav && <BottomNav />}
+      <div className="app-layout">
+        {!hideNav && <Sidebar />}
+        <div className="app-main-content">
+          <div className="app-shell">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/invoice/create/:companyId" element={<CreateInvoice />} />
+              <Route path="/invoice/edit/:invoiceId" element={<CreateInvoice />} />
+              <Route path="/history" element={<InvoiceHistory />} />
+              <Route path="/parties" element={<Parties />} />
+              <Route path="/storage" element={<Storage />} />
+            </Routes>
+            {!hideNav && <BottomNav />}
+          </div>
+        </div>
       </div>
     </ToastProvider>
   );

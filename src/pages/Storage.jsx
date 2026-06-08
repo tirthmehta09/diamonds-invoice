@@ -97,6 +97,11 @@ export default function Storage() {
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
 
+  // ── search, filter, sort states ──────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState('');
+  const [fileFilter, setFileFilter] = useState('all');
+  const [sortOption, setSortOption] = useState('name_asc');
+
   const isConfigured = config.url && config.key && config.bucket;
 
   useEffect(() => {
@@ -511,6 +516,66 @@ export default function Storage() {
   const isDemoMode = isConfigured && !loading && items.length === 0 && !path;
   const itemsToShow = isDemoMode ? demoItems : items;
 
+  const getProcessedItems = () => {
+    let list = [...itemsToShow];
+
+    // 1. Search Query filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(item => item.name.toLowerCase().includes(q));
+    }
+
+    // 2. File Filter
+    if (fileFilter !== 'all') {
+      list = list.filter(item => {
+        const isFolder = !item.id && !item.metadata;
+        if (fileFilter === 'folders') return isFolder;
+        if (isFolder) return false;
+        const ext = item.name.toLowerCase().split('.').pop();
+        if (fileFilter === 'pdfs') return ext === 'pdf';
+        if (fileFilter === 'images') return ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext);
+        return true;
+      });
+    }
+
+    // 3. Sort (Folders are ALWAYS on top, then sorted within their groups)
+    list.sort((a, b) => {
+      const aIsFolder = !a.id && !a.metadata;
+      const bIsFolder = !b.id && !b.metadata;
+
+      if (aIsFolder && !bIsFolder) return -1;
+      if (!aIsFolder && bIsFolder) return 1;
+
+      if (sortOption === 'name_asc') {
+        return a.name.localeCompare(b.name);
+      }
+      if (sortOption === 'name_desc') {
+        return b.name.localeCompare(a.name);
+      }
+      if (sortOption === 'date_desc') {
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      }
+      if (sortOption === 'date_asc') {
+        return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+      }
+      if (sortOption === 'size_desc') {
+        const aSize = a.metadata?.size || 0;
+        const bSize = b.metadata?.size || 0;
+        return bSize - aSize;
+      }
+      if (sortOption === 'size_asc') {
+        const aSize = a.metadata?.size || 0;
+        const bSize = b.metadata?.size || 0;
+        return aSize - bSize;
+      }
+      return 0;
+    });
+
+    return list;
+  };
+
+  const processedItems = getProcessedItems();
+
   const renderBreadcrumbs = () => {
     if (!path) return <span className="storage-breadcrumb-item active">Root</span>;
 
@@ -644,6 +709,50 @@ export default function Storage() {
           multiple
         />
 
+        {/* ── SECTION 3.5: Search, Filter, Sort Controls ─────────────────── */}
+        {isConfigured && (
+          <div className="storage-controls-bar">
+            {/* Search Input */}
+            <div className="storage-search-wrapper">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="storage-search-icon">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                className="storage-search-input"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search files and folders..."
+              />
+            </div>
+            
+            {/* Filter Dropdown */}
+            <select
+              className="storage-filter-select"
+              value={fileFilter}
+              onChange={(e) => setFileFilter(e.target.value)}
+            >
+              <option value="all">All Types</option>
+              <option value="folders">Folders Only</option>
+              <option value="pdfs">PDFs Only</option>
+              <option value="images">Images Only</option>
+            </select>
+
+            {/* Sort Dropdown */}
+            <select
+              className="storage-sort-select"
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value)}
+            >
+              <option value="name_asc">Name (A-Z)</option>
+              <option value="name_desc">Name (Z-A)</option>
+              <option value="date_desc">Date (Newest)</option>
+              <option value="date_asc">Date (Oldest)</option>
+              <option value="size_desc">Size (Largest)</option>
+              <option value="size_asc">Size (Smallest)</option>
+            </select>
+          </div>
+        )}
+
         {/* ── SECTION 4: Directory list ──────────────────────────────────── */}
         {isConfigured && (
           <div className="storage-list-card" style={{ position: 'relative' }}>
@@ -698,21 +807,21 @@ export default function Storage() {
               </div>
             )}
 
-            {!loading && itemsToShow.length === 0 && (
+            {!loading && processedItems.length === 0 && (
               <div className="empty-state" style={{ padding: '56px 16px', textAlign: 'center' }}>
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                 </svg>
-                <h3>This folder is empty</h3>
+                <h3>{searchQuery.trim() ? 'No matches found' : 'This folder is empty'}</h3>
                 <p style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>
-                  Use the toolbar above to upload files/folders or make a new directory!
+                  {searchQuery.trim() ? 'Try checking your spelling or clearing the search query.' : 'Use the toolbar above to upload files/folders or make a new directory!'}
                 </p>
               </div>
             )}
 
-            {!loading && itemsToShow.length > 0 && (
+            {!loading && processedItems.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {itemsToShow.map((item) => {
+                {processedItems.map((item) => {
                   const isFolder = !item.id && !item.metadata;
                   const isPdf = item.name.toLowerCase().endsWith('.pdf');
                   const itemChecked = selectedFiles.includes(item.name);
