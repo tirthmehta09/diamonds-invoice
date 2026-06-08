@@ -456,7 +456,7 @@ export default function CreateInvoice() {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="form-grid-2">
               <div>
                 <label className="field-label">Invoice Date {REQ}</label>
                 <input

@@ -240,6 +240,16 @@
     cursor: pointer;
   }
 
+  .form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .form-grid-2 > div {
+    min-width: 0;
+  }
+
   /* ── Section Cards ──────────────────────────────────────────────────────── */
   .section-card {
     background: #ffffff;
@@ -434,6 +444,10 @@
     grid-template-columns: 1fr 1fr;
     gap: 10px;
     margin-top: 10px;
+  }
+
+  .item-fields-row > div {
+    min-width: 0;
   }
 
   .item-delete-btn {
