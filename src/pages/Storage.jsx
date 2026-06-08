@@ -646,7 +646,33 @@ export default function Storage() {
 
         {/* ── SECTION 4: Directory list ──────────────────────────────────── */}
         {isConfigured && (
-          <div className="storage-list-card">
+          <div className="storage-list-card" style={{ position: 'relative' }}>
+            {/* Uploading / Creating Folder Overlay */}
+            {(uploading || creatingFolder) && (
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(255, 255, 255, 0.88)',
+                backdropFilter: 'blur(4px)',
+                zIndex: 10,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 24,
+                textAlign: 'center',
+                borderRadius: 'var(--radius-lg)'
+              }}>
+                <span className="spinner dark" style={{ width: 36, height: 36, borderWidth: 3.5 }} />
+                <h3 style={{ fontSize: 16, fontWeight: 700, marginTop: 14, color: '#0f172a' }}>
+                  {uploading ? 'Uploading Folder / Files...' : 'Creating Folder...'}
+                </h3>
+                <p style={{ fontSize: 12, color: '#64748b', marginTop: 4, maxWidth: 280 }}>
+                  Please wait while your changes are being securely synced to the cloud.
+                </p>
+              </div>
+            )}
+
             {/* Banner for Demo mode */}
             {isDemoMode && (
               <div style={{

@@ -81,44 +81,7 @@
     border-right: 1px solid var(--border-light);
   }
 
-  /* On larger screens (tablet / laptop), expand the shell */
-  @media (min-width: 640px) {
-    .app-shell {
-      max-width: 680px;
-    }
-    .bottom-nav, .totals-bar {
-      max-width: 680px;
-    }
-    .modal-overlay {
-      align-items: center;
-    }
-    .modal-sheet {
-      max-width: 520px;
-      border-radius: 24px;
-      max-height: 90dvh;
-    }
-  }
 
-  @media (min-width: 1024px) {
-    .app-shell {
-      max-width: 900px;
-    }
-    .bottom-nav, .totals-bar {
-      max-width: 900px;
-    }
-    .modal-sheet {
-      max-width: 560px;
-    }
-    /* Two column layout for section cards on desktop */
-    .desktop-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-    .desktop-grid .section-card {
-      margin-bottom: 0;
-    }
-  }
 
   /* ── Top Bar ───────────────────────────────────────────────────────────── */
   .top-bar {
@@ -955,20 +918,20 @@
   }
   .storage-tool-btn {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 10px 8px;
+    gap: 8px;
+    padding: 10px 16px;
     background: #ffffff;
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
     color: #475569;
-    font-size: 11.5px;
+    font-size: 13px;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    min-height: 64px;
+    min-height: 46px;
     box-shadow: var(--shadow-sm);
   }
   .storage-tool-btn:active {
@@ -1047,5 +1010,38 @@
     text-transform: uppercase;
     display: inline-flex;
     align-items: center;
+  }
+
+  /* On larger screens (tablet / laptop), expand the shell to full width */
+  @media (min-width: 640px) {
+    .app-shell {
+      max-width: 100%;
+      border-left: none;
+      border-right: none;
+      box-shadow: none;
+    }
+    .bottom-nav, .totals-bar {
+      max-width: 100% !important;
+    }
+    .modal-overlay {
+      align-items: center;
+    }
+    .modal-sheet {
+      max-width: 520px;
+      border-radius: 24px;
+      max-height: 90dvh;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    /* Two column layout for section cards on desktop */
+    .desktop-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .desktop-grid .section-card {
+      margin-bottom: 0;
+    }
   }
 }
