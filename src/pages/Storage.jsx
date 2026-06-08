@@ -525,7 +525,7 @@ export default function Storage() {
     <>
       {/* ── Top Bar ────────────────────────────────────────────────────────── */}
       <div className="top-bar">
-        <h1 style={{ fontSize: 17, fontWeight: 700 }}>Supabase Storage</h1>
+        <h1 style={{ fontSize: 17, fontWeight: 700 }}>File Storage</h1>
         <button
           className="btn-secondary"
           style={{ padding: '8px 10px', minHeight: 36, display: 'flex', alignItems: 'center', gap: 4, border: '1px solid #cbd5e1' }}
