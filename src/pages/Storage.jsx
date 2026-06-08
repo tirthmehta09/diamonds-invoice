@@ -96,11 +96,40 @@ export default function Storage() {
   // refs
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
+  const pathRef = useRef(path);
 
   // ── search, filter, sort states ──────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
   const [fileFilter, setFileFilter] = useState('all');
   const [sortOption, setSortOption] = useState('name_asc');
+
+  // keep ref in sync so popstate handler always sees latest path
+  useEffect(() => { pathRef.current = path; }, [path]);
+
+  // ── Browser Back Button → navigate up directory (not browser back) ────────
+  useEffect(() => {
+    // Push a state every time we enter a sub-folder so Back has something to pop
+    if (path) {
+      window.history.pushState({ storagePath: path }, '');
+    }
+
+    const handlePopState = (e) => {
+      // If we have a path, go up one level instead of leaving the page
+      if (pathRef.current) {
+        const idx = pathRef.current.lastIndexOf('/');
+        const parent = idx === -1 ? '' : pathRef.current.substring(0, idx);
+        setPath(parent);
+        setSelectedFiles([]);
+        // Re-push so next Back also works
+        if (parent) {
+          window.history.pushState({ storagePath: parent }, '');
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [path]);
 
   const isConfigured = config.url && config.key && config.bucket;
 
@@ -245,7 +274,7 @@ export default function Storage() {
     }
   };
 
-  // File Download / Share
+  // File Download / Share / View
   const handleDownloadFile = async (itemName) => {
     const client = getSupabaseClient();
     if (!client) return;
@@ -268,6 +297,48 @@ export default function Storage() {
     } catch (err) {
       console.error(err);
       showToast('Failed to download file', 'error');
+    }
+  };
+
+  // View file in new browser tab (creates a temporary signed URL)
+  const handleViewFile = async (itemName) => {
+    const client = getSupabaseClient();
+    if (!client) return;
+
+    showToast('Opening file...', 'info');
+    try {
+      const filePath = path ? `${path}/${itemName}` : itemName;
+      // Try signed URL first (works for private buckets)
+      const { data: signedData, error: signedError } = await client.storage
+        .from(config.bucket)
+        .createSignedUrl(filePath, 300); // 5-minute expiry
+
+      if (!signedError && signedData?.signedUrl) {
+        window.open(signedData.signedUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      // Fallback: download as blob and open
+      const { data, error } = await client.storage
+        .from(config.bucket)
+        .download(filePath);
+      if (error) throw error;
+
+      const ext = itemName.toLowerCase().split('.').pop();
+      const mimeMap = {
+        pdf: 'application/pdf',
+        png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+        webp: 'image/webp', gif: 'image/gif',
+        txt: 'text/plain',
+      };
+      const mime = mimeMap[ext] || 'application/octet-stream';
+      const blob = new Blob([data], { type: mime });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to open file', 'error');
     }
   };
 
@@ -666,7 +737,7 @@ export default function Storage() {
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M9 13h6m-3-3v6m-9 1V4a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
               </svg>
-              + Folder
+              <span>New Folder</span>
             </button>
             <button
               className="storage-tool-btn"
@@ -676,7 +747,7 @@ export default function Storage() {
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
-              Upload File(s)
+              <span>Upload Files</span>
             </button>
             <button
               className="storage-tool-btn"
@@ -684,9 +755,9 @@ export default function Storage() {
               disabled={uploading}
             >
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5M5 19v-4m16 4v-4m-4-8l-4-4m0 0L9 7m3-3v12" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5" />
               </svg>
-              Upload Folder
+              <span>Upload Folder</span>
             </button>
           </div>
         )}
@@ -712,7 +783,7 @@ export default function Storage() {
         {/* ── SECTION 3.5: Search, Filter, Sort Controls ─────────────────── */}
         {isConfigured && (
           <div className="storage-controls-bar">
-            {/* Search Input */}
+            {/* Search Input — full width */}
             <div className="storage-search-wrapper">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="storage-search-icon">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -724,32 +795,33 @@ export default function Storage() {
                 placeholder="Search files and folders..."
               />
             </div>
-            
-            {/* Filter Dropdown */}
-            <select
-              className="storage-filter-select"
-              value={fileFilter}
-              onChange={(e) => setFileFilter(e.target.value)}
-            >
-              <option value="all">All Types</option>
-              <option value="folders">Folders Only</option>
-              <option value="pdfs">PDFs Only</option>
-              <option value="images">Images Only</option>
-            </select>
 
-            {/* Sort Dropdown */}
-            <select
-              className="storage-sort-select"
-              value={sortOption}
-              onChange={(e) => setSortOption(e.target.value)}
-            >
-              <option value="name_asc">Name (A-Z)</option>
-              <option value="name_desc">Name (Z-A)</option>
-              <option value="date_desc">Date (Newest)</option>
-              <option value="date_asc">Date (Oldest)</option>
-              <option value="size_desc">Size (Largest)</option>
-              <option value="size_asc">Size (Smallest)</option>
-            </select>
+            {/* Filter + Sort in a 2-column row */}
+            <div className="storage-dropdowns-row">
+              <select
+                className="storage-filter-select"
+                value={fileFilter}
+                onChange={(e) => setFileFilter(e.target.value)}
+              >
+                <option value="all">All Types</option>
+                <option value="folders">Folders</option>
+                <option value="pdfs">PDFs</option>
+                <option value="images">Images</option>
+              </select>
+
+              <select
+                className="storage-sort-select"
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+              >
+                <option value="name_asc">Name A-Z</option>
+                <option value="name_desc">Name Z-A</option>
+                <option value="date_desc">Newest</option>
+                <option value="date_asc">Oldest</option>
+                <option value="size_desc">Largest</option>
+                <option value="size_asc">Smallest</option>
+              </select>
+            </div>
           </div>
         )}
 
@@ -895,12 +967,33 @@ export default function Storage() {
                       </div>
 
                       {/* Row Actions */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8, flexShrink: 0 }}>
+                        {/* View button — for ALL files */}
+                        {!isFolder && (
+                          <button
+                            className="btn-secondary"
+                            style={{ padding: 7, minHeight: 32, minWidth: 32, borderRadius: 7 }}
+                            onClick={() => {
+                              if (isDemoMode) {
+                                showToast('Preview not available in demo mode', 'info');
+                              } else {
+                                handleViewFile(item.name);
+                              }
+                            }}
+                            title="View / Preview"
+                          >
+                            {/* Eye icon */}
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                          </button>
+                        )}
                         {!isFolder && (
                           <>
                             <button
                               className="btn-secondary"
-                              style={{ padding: 8, minHeight: 34, minWidth: 34, borderRadius: 8 }}
+                              style={{ padding: 7, minHeight: 32, minWidth: 32, borderRadius: 7 }}
                               onClick={() => {
                                 if (isDemoMode) {
                                   showToast('Demo files cannot be downloaded', 'info');
@@ -914,7 +1007,7 @@ export default function Storage() {
                             </button>
                             <button
                               className="btn-secondary"
-                              style={{ padding: 8, minHeight: 34, minWidth: 34, borderRadius: 8 }}
+                              style={{ padding: 7, minHeight: 32, minWidth: 32, borderRadius: 7 }}
                               onClick={() => {
                                 if (isDemoMode) {
                                   showToast('Demo files cannot be shared', 'info');
@@ -931,12 +1024,14 @@ export default function Storage() {
                         <button
                           className="btn-secondary"
                           style={{
-                            padding: 8,
-                            minHeight: 34,
-                            minWidth: 34,
-                            borderRadius: 8,
+                            padding: 7,
+                            minHeight: 32,
+                            minWidth: 32,
+                            borderRadius: 7,
                             color: '#ef4444',
-                            borderColor: 'transparent'
+                            borderColor: 'transparent',
+                            background: 'transparent',
+                            boxShadow: 'none'
                           }}
                           onClick={() => {
                             if (isDemoMode) {
