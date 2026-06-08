@@ -61,7 +61,7 @@ export default function App() {
         const storedFp = localStorage.getItem(DEVICE_FP_KEY);
         if (storedFp && storedFp !== currentFp) {
           // Different device — force logout
-          client.auth.signOut().then(() => {
+          client.auth.signOut({ scope: 'local' }).then(() => {
             localStorage.removeItem(DEVICE_FP_KEY);
             localStorage.removeItem('session_start_time');
             setSession(null);
@@ -134,7 +134,7 @@ export default function App() {
     const handleAutoLogout = async (message) => {
       const client = getSupabaseClient();
       if (client) {
-        await client.auth.signOut();
+        await client.auth.signOut({ scope: 'local' });
         localStorage.removeItem('session_start_time');
         alert(message);
       }

@@ -685,7 +685,7 @@ export default function Storage() {
   const handleLogout = async () => {
     const client = getSupabaseClient();
     if (client) {
-      await client.auth.signOut();
+      await client.auth.signOut({ scope: 'local' });
     }
   };
 
