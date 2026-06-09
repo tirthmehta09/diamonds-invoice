@@ -45,10 +45,17 @@
   /* Prevent iOS auto-zoom on input focus + enforce Inter font on ALL form elements */
   input, select, textarea, button {
     font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+    touch-action: manipulation;
+  }
+
+  a, .bottom-nav-item, .storage-tool-btn, .storage-breadcrumb-item, .storage-item-row, .company-card {
+    touch-action: manipulation;
   }
 
   input, select, textarea {
     font-size: 16px !important;
+    -webkit-appearance: none;
+    appearance: none;
   }
 
   /* Sleek modern scrollbars */
@@ -194,6 +201,7 @@
     flex: 1;
     padding: 16px 16px 120px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* ── Form Fields ────────────────────────────────────────────────────────── */
@@ -675,6 +683,7 @@
     max-width: 480px;
     max-height: 85dvh;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 24px 20px;
     padding-bottom: calc(24px + env(safe-area-inset-bottom));
     box-shadow: 0 -10px 40px rgba(15,23,42,0.15);
@@ -921,8 +930,10 @@
     padding: 2px 6px;
     border-radius: 6px;
   }
-  .storage-breadcrumb-item:hover {
-    background: rgba(79, 70, 229, 0.06);
+  @media (hover: hover) {
+    .storage-breadcrumb-item:hover {
+      background: rgba(79, 70, 229, 0.06);
+    }
   }
   .storage-breadcrumb-item.active {
     color: #0f172a;
@@ -985,8 +996,10 @@
     transition: background-color 0.15s ease;
     min-height: 0;
   }
-  .storage-item-row:hover {
-    background-color: #f8fafc;
+  @media (hover: hover) {
+    .storage-item-row:hover {
+      background-color: #f8fafc;
+    }
   }
   .storage-item-row.selected {
     background-color: rgba(99, 102, 241, 0.04);
@@ -1070,7 +1083,7 @@
     outline: none;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     font-weight: 600;
-    font-size: 13.5px;
+    font-size: 16px;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     box-shadow: var(--shadow-sm);
   }
@@ -1098,7 +1111,7 @@
     border-radius: var(--radius-md);
     color: #334155;
     padding: 9px 32px 9px 12px;
-    font-size: 13px !important;
+    font-size: 16px !important;
     font-weight: 600;
     font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
     outline: none;
@@ -1119,10 +1132,12 @@
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
   }
 
-  .storage-filter-select:hover,
-  .storage-sort-select:hover {
-    background-color: #f8fafc;
-    border-color: #a5b4fc;
+  @media (hover: hover) {
+    .storage-filter-select:hover,
+    .storage-sort-select:hover {
+      background-color: #f8fafc;
+      border-color: #a5b4fc;
+    }
   }
 
   /* On larger screens (tablet / laptop), expand the shell to full width */
@@ -1234,6 +1249,10 @@
     .storage-sort-select {
       width: auto;
       flex-shrink: 0;
+      font-size: 13px !important;
+    }
+    .storage-search-input {
+      font-size: 13.5px;
     }
 
     /* ─── SIDEBAR ──────────────────────────────────────────────────────── */

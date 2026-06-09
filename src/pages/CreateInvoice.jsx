@@ -347,14 +347,26 @@ export default function CreateInvoice() {
     try {
       const invoice = buildInvoice();
       invoice.filename = customFilename;
+
+      // 1. Generate the PDF blob synchronously
+      const pdfBlob = generateInvoicePDF(invoice, company);
+
+      // 2. Trigger user-initiated share/download immediately to preserve gesture context on Safari
+      let actionPromise = Promise.resolve();
+      if (namingAction === 'share') {
+        actionPromise = shareInvoicePDF(invoice, company, customFilename);
+      } else if (namingAction === 'download') {
+        downloadInvoicePDF(invoice, company, customFilename);
+      }
+
+      // 3. Save the invoice record locally / database (indexedDB / localStorage)
       await saveInvoice(invoice);
       confirmInvoiceNumber(company.id);
 
-      // Generate the PDF blob and upload to Supabase Storage
-      try {
-        const pdfBlob = generateInvoicePDF(invoice, company);
-        const client = getSupabaseClient();
-        if (client) {
+      // 4. Upload the PDF file to Supabase Storage
+      const client = getSupabaseClient();
+      if (client) {
+        try {
           const { bucket } = getSupabaseConfig();
           const cleanFilename = customFilename.endsWith('.pdf') ? customFilename : `${customFilename}.pdf`;
           
@@ -369,17 +381,17 @@ export default function CreateInvoice() {
             .upload(destPath, fileObj, { upsert: true });
             
           console.log(`Generated PDF uploaded to ${destPath} successfully!`);
+        } catch (uploadErr) {
+          console.error('Failed to auto-upload generated invoice PDF:', uploadErr);
         }
-      } catch (uploadErr) {
-        console.error('Failed to auto-upload generated invoice PDF:', uploadErr);
       }
 
+      // 5. Success toasts and navigation
       if (namingAction === 'share') {
-        await shareInvoicePDF(invoice, company, customFilename);
-        showToast('Invoice shared!', 'success');
+        await actionPromise;
+        showToast('Invoice shared & saved!', 'success');
       } else if (namingAction === 'download') {
-        downloadInvoicePDF(invoice, company, customFilename);
-        showToast('PDF downloaded!', 'success');
+        showToast('PDF downloaded & saved!', 'success');
       } else {
         showToast('Invoice saved successfully!', 'success');
       }

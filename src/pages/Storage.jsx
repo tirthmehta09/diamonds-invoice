@@ -1,5 +1,6 @@
 // src/pages/Storage.jsx
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import { PDFDocument } from 'pdf-lib';
 import { useToast } from '../components/Toast.jsx';
@@ -75,7 +76,17 @@ export default function Storage() {
   const showToast = useToast();
 
   // ── storage states ───────────────────────────────────────────────────────
-  const [path, setPath] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const path = searchParams.get('path') || '';
+
+  const setPath = (newPath) => {
+    if (newPath) {
+      setSearchParams({ path: newPath });
+    } else {
+      setSearchParams({});
+    }
+  };
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -96,40 +107,11 @@ export default function Storage() {
   // refs
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
-  const pathRef = useRef(path);
 
   // ── search, filter, sort states ──────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
   const [fileFilter, setFileFilter] = useState('all');
   const [sortOption, setSortOption] = useState('name_asc');
-
-  // keep ref in sync so popstate handler always sees latest path
-  useEffect(() => { pathRef.current = path; }, [path]);
-
-  // ── Browser Back Button → navigate up directory (not browser back) ────────
-  useEffect(() => {
-    // Push a state every time we enter a sub-folder so Back has something to pop
-    if (path) {
-      window.history.pushState({ storagePath: path }, '');
-    }
-
-    const handlePopState = (e) => {
-      // If we have a path, go up one level instead of leaving the page
-      if (pathRef.current) {
-        const idx = pathRef.current.lastIndexOf('/');
-        const parent = idx === -1 ? '' : pathRef.current.substring(0, idx);
-        setPath(parent);
-        setSelectedFiles([]);
-        // Re-push so next Back also works
-        if (parent) {
-          window.history.pushState({ storagePath: parent }, '');
-        }
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [path]);
 
   const isConfigured = config.url && config.key && config.bucket;
 
@@ -292,7 +274,10 @@ export default function Storage() {
       const a = document.createElement('a');
       a.href = url;
       a.download = itemName;
+      a.style.display = 'none';
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     } catch (err) {
       console.error(err);
@@ -305,6 +290,12 @@ export default function Storage() {
     const client = getSupabaseClient();
     if (!client) return;
 
+    // Pre-open blank tab synchronously in response to the user's click gesture
+    const newWindow = window.open('', '_blank');
+    if (newWindow) {
+      newWindow.document.write('<p style="font-family: sans-serif; text-align: center; margin-top: 50px; color: #64748b;">Loading file preview...</p>');
+    }
+
     showToast('Opening file...', 'info');
     try {
       const filePath = path ? `${path}/${itemName}` : itemName;
@@ -314,7 +305,11 @@ export default function Storage() {
         .createSignedUrl(filePath, 300); // 5-minute expiry
 
       if (!signedError && signedData?.signedUrl) {
-        window.open(signedData.signedUrl, '_blank', 'noopener,noreferrer');
+        if (newWindow) {
+          newWindow.location.href = signedData.signedUrl;
+        } else {
+          window.open(signedData.signedUrl, '_blank', 'noopener,noreferrer');
+        }
         return;
       }
 
@@ -334,10 +329,16 @@ export default function Storage() {
       const mime = mimeMap[ext] || 'application/octet-stream';
       const blob = new Blob([data], { type: mime });
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener,noreferrer');
+      
+      if (newWindow) {
+        newWindow.location.href = url;
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
       setTimeout(() => URL.revokeObjectURL(url), 30000);
     } catch (err) {
       console.error(err);
+      if (newWindow) newWindow.close();
       showToast('Failed to open file', 'error');
     }
   };
@@ -361,9 +362,17 @@ export default function Storage() {
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: itemName });
       } else {
+        // Fallback to downloading the file directly
         const url = URL.createObjectURL(data);
-        window.open(url, '_blank');
-        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = itemName;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        showToast('Web sharing not supported; downloading file instead.', 'info');
       }
     } catch (err) {
       console.error(err);
@@ -514,7 +523,10 @@ export default function Storage() {
       const a = document.createElement('a');
       a.href = url;
       a.download = finalFilename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 5000);
 
       setSelectedFiles([]);
@@ -555,40 +567,11 @@ export default function Storage() {
     }
   };
 
-  const demoItems = [
-    {
-      name: 'INVOICES_2026',
-      created_at: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
-    },
-    {
-      name: 'PARTIES_EXPORTS',
-      created_at: new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString(),
-    },
-    {
-      name: '01-JAS-001-JAY_DIAMOND.pdf',
-      id: 'demo-1',
-      metadata: { size: 125400 },
-      created_at: new Date().toISOString(),
-    },
-    {
-      name: '02-JAS-002-SRI_GURU.pdf',
-      id: 'demo-2',
-      metadata: { size: 98400 },
-      created_at: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString(),
-    },
-    {
-      name: 'JAS_Diamond_Logo.png',
-      id: 'demo-3',
-      metadata: { size: 45600 },
-      created_at: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
-    }
-  ];
-
-  const isDemoMode = isConfigured && !loading && items.length === 0 && !path;
-  const itemsToShow = isDemoMode ? demoItems : items;
+  const isDemoMode = false;
+  const itemsToShow = items;
 
   const getProcessedItems = () => {
-    let list = [...itemsToShow];
+    let list = [...items];
 
     // 1. Search Query filter
     if (searchQuery.trim()) {
@@ -854,23 +837,7 @@ export default function Storage() {
               </div>
             )}
 
-            {/* Banner for Demo mode */}
-            {isDemoMode && (
-              <div style={{
-                background: '#fffbeb',
-                borderBottom: '1px solid #fde68a',
-                padding: '10px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 8,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#b45309', fontWeight: 600 }}>
-                  <span className="preview-data-badge">Preview Mode</span>
-                  <span>Showing demo files because storage is empty.</span>
-                </div>
-              </div>
-            )}
+
 
             {loading && (
               <div style={{ textAlign: 'center', padding: '48px 0' }}>
@@ -934,11 +901,7 @@ export default function Storage() {
                           }}
                           onClick={() => {
                             if (isFolder) {
-                              if (isDemoMode) {
-                                showToast('Demo folders cannot be opened', 'info');
-                              } else {
-                                handleFolderClick(item.name);
-                              }
+                              handleFolderClick(item.name);
                             }
                           }}
                         >
@@ -973,13 +936,7 @@ export default function Storage() {
                           <button
                             className="btn-secondary"
                             style={{ padding: 7, minHeight: 32, minWidth: 32, borderRadius: 7 }}
-                            onClick={() => {
-                              if (isDemoMode) {
-                                showToast('Preview not available in demo mode', 'info');
-                              } else {
-                                handleViewFile(item.name);
-                              }
-                            }}
+                            onClick={() => handleViewFile(item.name)}
                             title="View / Preview"
                           >
                             {/* Eye icon */}
@@ -994,13 +951,7 @@ export default function Storage() {
                             <button
                               className="btn-secondary"
                               style={{ padding: 7, minHeight: 32, minWidth: 32, borderRadius: 7 }}
-                              onClick={() => {
-                                if (isDemoMode) {
-                                  showToast('Demo files cannot be downloaded', 'info');
-                                } else {
-                                  handleDownloadFile(item.name);
-                                }
-                              }}
+                              onClick={() => handleDownloadFile(item.name)}
                               title="Download"
                             >
                               <DownloadIcon />
@@ -1008,13 +959,7 @@ export default function Storage() {
                             <button
                               className="btn-secondary"
                               style={{ padding: 7, minHeight: 32, minWidth: 32, borderRadius: 7 }}
-                              onClick={() => {
-                                if (isDemoMode) {
-                                  showToast('Demo files cannot be shared', 'info');
-                                } else {
-                                  handleShareFile(item.name);
-                                }
-                              }}
+                              onClick={() => handleShareFile(item.name)}
                               title="Share"
                             >
                               <ShareIcon />
@@ -1033,13 +978,7 @@ export default function Storage() {
                             background: 'transparent',
                             boxShadow: 'none'
                           }}
-                          onClick={() => {
-                            if (isDemoMode) {
-                              showToast('Demo files cannot be deleted', 'info');
-                            } else {
-                              handleDeleteItem(item);
-                            }
-                          }}
+                          onClick={() => handleDeleteItem(item)}
                           title="Delete"
                         >
                           <TrashIcon />
@@ -1161,7 +1100,7 @@ export default function Storage() {
                   color: '#ffffff'
                 }}
                 disabled={!!mergedNameError || !mergedName.trim() || merging}
-                onClick={isDemoMode ? () => { setShowMergeModal(false); showToast('PDF Merge is disabled for demo files', 'error'); } : executePDFMerge}
+                onClick={executePDFMerge}
               >
                 Confirm & Merge
               </button>

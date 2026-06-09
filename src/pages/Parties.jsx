@@ -95,25 +95,8 @@ export default function Parties() {
   const [editing, setEditing] = useState(null);
   const showToast = useToast();
 
-  const demoParties = [
-    {
-      id: 'demo-p1',
-      name: 'M/S OM JEWELS LUXURY',
-      gstin: '27AADCO8542M1ZQ',
-      addressLines: ['102 GOKUL ARCADE', 'S.V. ROAD, VILE PARLE EAST', 'MUMBAI - 400057'],
-      defaultTerms: 'COD'
-    },
-    {
-      id: 'demo-p2',
-      name: 'M/S DIAMOND PALACE',
-      gstin: '24ABCDE1234F1ZA',
-      addressLines: ['405 RATNA SAGAR APARTMENTS', 'VARACHHA ROAD', 'SURAT - 395006'],
-      defaultTerms: '30 DAYS'
-    }
-  ];
-
-  const isDemo = parties.length === 0 && !loading;
-  const partiesToShow = isDemo ? demoParties : parties;
+  const isDemo = false;
+  const partiesToShow = parties;
 
   const load = () => {
     getAllParties().then((all) => { setParties(all); setLoading(false); });
@@ -127,10 +110,6 @@ export default function Parties() {
   });
 
   const handleSave = async (party) => {
-    if (isDemo && party.id.startsWith('demo-')) {
-      showToast('Demo party editing is disabled', 'info');
-      return;
-    }
     await saveParty(party);
     setEditing(null);
     showToast('Party saved!', 'success');
@@ -138,10 +117,6 @@ export default function Parties() {
   };
 
   const handleDelete = async (id) => {
-    if (isDemo && id.startsWith('demo-')) {
-      showToast('Demo party operations are disabled', 'info');
-      return;
-    }
     if (!window.confirm('Delete this party?')) return;
     await deleteParty(id);
     showToast('Party deleted', 'info');
@@ -184,25 +159,7 @@ export default function Parties() {
           />
         </div>
 
-        {/* Banner for Demo mode */}
-        {isDemo && (
-          <div style={{
-            background: '#fffbeb',
-            border: '1px solid #fde68a',
-            borderRadius: 'var(--radius-md)',
-            padding: '10px 14px',
-            marginBottom: 14,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#b45309', fontWeight: 600 }}>
-              <span className="preview-data-badge">Preview Mode</span>
-              <span>Showing demo parties because your list is empty.</span>
-            </div>
-          </div>
-        )}
+
 
         {loading && (
           <div style={{ textAlign: 'center', padding: 48 }}>

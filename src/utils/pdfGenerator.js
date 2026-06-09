@@ -379,7 +379,10 @@ export function downloadInvoicePDF(invoice, company, customFilename) {
     a.download  = `${no}-${buyer}.pdf`;
   }
   
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
